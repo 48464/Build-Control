@@ -17,3 +17,7 @@ Update on GitHub: upload ALL files again (new: boq.js; changed: app.js, index.ht
 
 ## UI refresh
 Modern design, floating navigation, custom bottom-sheet dropdowns (ui.js). Upload ALL files again (new: ui.js).
+
+## Phase 3
+Price database (materials, suppliers, dated quotations with reliability labels), labour and equipment rates, CSV price import, unit-rate analysis, cost estimate. No prices are built in.
+Upload ALL files again (new: prices.js).

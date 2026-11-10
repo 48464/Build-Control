@@ -12,7 +12,8 @@ const etb = n => n == null || n === '' ? 'Not set' : new Intl.NumberFormat('en-U
 const DEVICE = (() => { let d = localStorage.getItem('deviceId'); if (!d) { d = uid(); localStorage.setItem('deviceId', d); } return d; })();
 
 // ---------- reference data ----------
-const STORES = ['users', 'projects', 'members', 'tasks', 'audit', 'drawings', 'measurements', 'boqitems', 'boqrevs', 'files'];
+const STORES = ['users', 'projects', 'members', 'tasks', 'audit', 'drawings', 'measurements', 'boqitems', 'boqrevs', 'files', 'materials', 'suppliers', 'quotes', 'labourrates', 'equiprates', 'rates', 'pricing'];
+const PRICE_STORES = ['materials', 'suppliers', 'quotes', 'labourrates', 'equiprates', 'rates', 'pricing'];
 const BACKUP_STORES = STORES.filter(s => s !== 'files'); // drawing files are not in backups yet
 const ROUTES = {}, DASH_EXT = {}; // extension points used by boq.js
 const CITIES = ['Shashamane', 'Addis Ababa', 'Hawassa', 'Adama', 'Bishoftu', 'Jimma', 'Bahir Dar', 'Dire Dawa', 'Other'];
@@ -57,7 +58,7 @@ const SECTIONS = [
 // ---------- IndexedDB ----------
 let db;
 const openDB = () => new Promise((res, rej) => {
-  const r = indexedDB.open('ethiopian-construction', 2);
+  const r = indexedDB.open('ethiopian-construction', 3);
   r.onupgradeneeded = () => { for (const s of STORES) if (!r.result.objectStoreNames.contains(s)) r.result.createObjectStore(s, { keyPath: 'id' }); };
   r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
 });
@@ -99,7 +100,7 @@ async function aesKey(pass, salt) {
 }
 
 // ---------- state ----------
-const S = { user: null, users: [], projects: [], members: [], tasks: [], drawings: [], measurements: [], boqitems: [], boqrevs: [], pid: localStorage.getItem('proj') };
+const S = { user: null, users: [], projects: [], members: [], tasks: [], drawings: [], measurements: [], boqitems: [], boqrevs: [], materials: [], suppliers: [], quotes: [], labourrates: [], equiprates: [], rates: [], pricing: [], pid: localStorage.getItem('proj') };
 const myRole = () => S.user && S.pid ? S.members.find(m => m.projectId === S.pid && m.userId === S.user.id)?.role : null;
 const curProject = () => S.projects.find(p => p.id === S.pid);
 const userName = id => S.users.find(u => u.id === id)?.name || '';
@@ -108,6 +109,7 @@ const cityOf = p => p.city === 'Other' ? (p.cityOther || 'Other') : p.city;
 
 async function load() {
   const [users, projects, members, tasks, drawings, measurements, boqitems, boqrevs] = await Promise.all(['users', 'projects', 'members', 'tasks', 'drawings', 'measurements', 'boqitems', 'boqrevs'].map(dbAll));
+  for (const s of PRICE_STORES) S[s] = await dbAll(s);
   S.users = users; S.drawings = drawings; S.measurements = measurements; S.boqitems = boqitems; S.boqrevs = boqrevs;
   S.members = members.filter(m => !m.deleted);
   const mine = S.members.filter(m => m.userId === S.user.id).map(m => m.projectId);
@@ -117,7 +119,7 @@ async function load() {
   if (S.pid) localStorage.setItem('proj', S.pid);
 }
 async function countLocal() {
-  let n = 0; for (const s of ['users', 'projects', 'members', 'tasks', 'drawings', 'measurements', 'boqitems', 'boqrevs']) n += (await dbAll(s)).filter(r => r.sync === 'local').length; return n;
+  let n = 0; for (const s of ['users', 'projects', 'members', 'tasks', 'drawings', 'measurements', 'boqitems', 'boqrevs', ...PRICE_STORES]) n += (await dbAll(s)).filter(r => r.sync === 'local').length; return n;
 }
 
 // ---------- priority (transparent, rule-based) ----------
@@ -181,7 +183,7 @@ async function renderShell() {
   const on = k => h === '#/' + k || (k === 'dashboard' && (h === '' || h === '#/')) ? 'on' : '';
   const IC = { dashboard: '<path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/>', daily: '<rect x="3" y="5" width="18" height="16" rx="3"/><path d="M8 3v4M16 3v4M3 10h18"/>', projects: '<path d="M3 20h18"/><path d="M6 20V8l6-4 6 4v12"/><path d="M10 20v-5h4v5"/>', tasks: '<circle cx="12" cy="12" r="9"/><path d="M8 12.5l3 3 5-6"/>', menu: '<path d="M4 7h16M4 12h16M4 17h16"/>' };
   $('#bottom').innerHTML = [['dashboard', 'Home'], ['daily', 'Today'], ['projects', 'Projects'], ['tasks', 'Tasks'], ['menu', 'Menu']]
-    .map(([k, l]) => `<a href="#/${k}" class="${on(k) || (k === 'menu' && /#\/(s\/|settings|backup|menu|drawings?|boq)/.test(h) ? 'on' : '')}"><svg viewBox="0 0 24 24">${IC[k]}</svg>${l}</a>`).join('');
+    .map(([k, l]) => `<a href="#/${k}" class="${on(k) || (k === 'menu' && /#\/(s\/|settings|backup|menu|drawings?|boq|suppliers|material|cost|rate)/.test(h) ? 'on' : '')}"><svg viewBox="0 0 24 24">${IC[k]}</svg>${l}</a>`).join('');
   return r;
 }
 
@@ -225,13 +227,13 @@ function viewDashboard() {
     labour: () => soon('Labour attendance', 'Attendance arrives in Phase 4.')
   };
   const LAYOUT = {
-    owner: ['kpi', 'next', 'boq', 'overdue', 'blocked', 'approvals', 'money'],
+    owner: ['kpi', 'next', 'boq', 'cost', 'overdue', 'blocked', 'approvals', 'money'],
     administrator: ['kpi', 'next', 'overdue', 'blocked', 'approvals'],
-    project_manager: ['next', 'boq', 'today', 'overdue', 'blocked', 'materials'],
+    project_manager: ['next', 'boq', 'cost', 'today', 'overdue', 'blocked', 'materials'],
     contractor: ['next', 'today', 'overdue', 'blocked', 'labour', 'materials'],
     site_supervisor: ['today', 'overdue', 'blocked', 'labour', 'materials', 'approvals'],
     engineer: ['next', 'today', 'overdue', 'drawings', 'boq', 'compliance'],
-    quantity_surveyor: ['next', 'drawings', 'boq', 'money', 'overdue'],
+    quantity_surveyor: ['next', 'drawings', 'boq', 'cost', 'money', 'overdue'],
     accountant: ['money', 'kpi', 'overdue'],
     storekeeper: ['materials', 'today', 'overdue'],
     labour_supervisor: ['labour', 'today', 'overdue', 'blocked'],
@@ -464,7 +466,7 @@ const A = {
 
 document.addEventListener('click', e => {
   const el = e.target.closest('[data-a]'); if (!el) return;
-  e.preventDefault(); const f = A[el.dataset.a]; if (f) Promise.resolve(f(el.dataset.id)).catch(err => toast(err.message));
+  e.preventDefault(); const f = A[el.dataset.a]; if (f) (async () => f(el.dataset.id))().catch(err => toast(err.message));
 });
 document.addEventListener('submit', async e => {
   const form = e.target.closest('form[data-f]'); if (!form) return; e.preventDefault();

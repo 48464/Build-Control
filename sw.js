@@ -1,5 +1,5 @@
-const CACHE='ethcm-shell-v3';
-const SHELL=['./','index.html','styles.css','app.js','boq.js','ui.js','manifest.webmanifest','icon.svg'];
+const CACHE='ethcm-shell-v4';
+const SHELL=['./','index.html','styles.css','app.js','boq.js','prices.js','ui.js','manifest.webmanifest','icon.svg'];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(SHELL)).then(()=>self.skipWaiting()))});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()))});
 self.addEventListener('fetch',e=>{

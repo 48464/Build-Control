@@ -106,3 +106,7 @@ a.btn{display:inline-flex;align-items:center}
 img{max-width:100%}
 :focus-visible{outline:3px solid color-mix(in srgb,var(--brand) 55%,transparent);outline-offset:2px}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+.tabs{display:flex;gap:6px;background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:4px;margin:0 0 14px;box-shadow:var(--shadow)}
+.tabs a{flex:1;text-align:center;padding:8px 4px;border-radius:999px;font-size:13px;font-weight:600;color:var(--muted)}
+.tabs a.on{background:var(--brand-soft);color:var(--brand)}

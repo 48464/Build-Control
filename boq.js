@@ -218,6 +218,7 @@ function viewBoqItem(id) {
   ${c.ok || isFinite(c.gross) && c.gross ? `<p class="small">Gross: ${esc(substituted(it.expr, c.vars))} = <b>${fmt(c.gross)} ${esc(it.unit)}</b></p>` : ''}
   ${c.deds.map(d => `<p class="small">Less ${esc(d.label)}: ${esc(substituted(d.expr, c.vars))} = ${fmt(d.val)} ${esc(it.unit)}</p>`).join('')}
   ${c.ok ? `<p>Net quantity: <b>${fmt(c.net)} ${esc(it.unit)}</b></p><p class="small">Waste allowance: ${Number(it.wastePct) || 0}% (set by a user) = ${fmt(c.waste)} ${esc(it.unit)}<br>Procurement quantity: <b>${fmt(c.proc)} ${esc(it.unit)}</b></p>` : ''}</div>
+  <a class="btn" href="#/rate/${id}" style="margin-bottom:12px">Unit rate & cost</a>
   ${it.notes ? `<div class="card small">Notes: ${esc(it.notes)}</div>` : ''}
   ${edit ? `<div class="row" style="justify-content:flex-start"><button data-a="edit-item" data-id="${id}">Edit</button>${st === 'Draft' ? `<button class="primary" data-a="verify-item" data-id="${id}">Mark verified</button>` : ''}<button class="danger" data-a="del-item" data-id="${id}">Delete</button></div><p class="small muted">Verified means a person checked the inputs and the result. Changing any input returns the item to Draft.</p>` : ''}`;
 }
