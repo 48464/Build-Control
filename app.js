@@ -12,7 +12,9 @@ const etb = n => n == null || n === '' ? 'Not set' : new Intl.NumberFormat('en-U
 const DEVICE = (() => { let d = localStorage.getItem('deviceId'); if (!d) { d = uid(); localStorage.setItem('deviceId', d); } return d; })();
 
 // ---------- reference data ----------
-const STORES = ['users', 'projects', 'members', 'tasks', 'audit'];
+const STORES = ['users', 'projects', 'members', 'tasks', 'audit', 'drawings', 'measurements', 'boqitems', 'boqrevs', 'files'];
+const BACKUP_STORES = STORES.filter(s => s !== 'files'); // drawing files are not in backups yet
+const ROUTES = {}, DASH_EXT = {}; // extension points used by boq.js
 const CITIES = ['Shashamane', 'Addis Ababa', 'Hawassa', 'Adama', 'Bishoftu', 'Jimma', 'Bahir Dar', 'Dire Dawa', 'Other'];
 const TYPES = ['Single-storey house', 'Multi-storey residential', 'Villa', 'Apartments', 'Small commercial', 'Other'];
 const STAGES = ['Preliminary works', 'Earthworks', 'Foundation & substructure', 'Structural works', 'Masonry', 'Roofing', 'Doors & windows', 'Plastering & finishing', 'Electrical installations', 'Plumbing & sanitation', 'External works'];
@@ -55,7 +57,7 @@ const SECTIONS = [
 // ---------- IndexedDB ----------
 let db;
 const openDB = () => new Promise((res, rej) => {
-  const r = indexedDB.open('ethiopian-construction', 1);
+  const r = indexedDB.open('ethiopian-construction', 2);
   r.onupgradeneeded = () => { for (const s of STORES) if (!r.result.objectStoreNames.contains(s)) r.result.createObjectStore(s, { keyPath: 'id' }); };
   r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
 });
@@ -97,7 +99,7 @@ async function aesKey(pass, salt) {
 }
 
 // ---------- state ----------
-const S = { user: null, users: [], projects: [], members: [], tasks: [], pid: localStorage.getItem('proj') };
+const S = { user: null, users: [], projects: [], members: [], tasks: [], drawings: [], measurements: [], boqitems: [], boqrevs: [], pid: localStorage.getItem('proj') };
 const myRole = () => S.user && S.pid ? S.members.find(m => m.projectId === S.pid && m.userId === S.user.id)?.role : null;
 const curProject = () => S.projects.find(p => p.id === S.pid);
 const userName = id => S.users.find(u => u.id === id)?.name || '';
@@ -105,8 +107,8 @@ const projTasks = () => S.tasks.filter(t => t.projectId === S.pid);
 const cityOf = p => p.city === 'Other' ? (p.cityOther || 'Other') : p.city;
 
 async function load() {
-  const [users, projects, members, tasks] = await Promise.all(['users', 'projects', 'members', 'tasks'].map(dbAll));
-  S.users = users;
+  const [users, projects, members, tasks, drawings, measurements, boqitems, boqrevs] = await Promise.all(['users', 'projects', 'members', 'tasks', 'drawings', 'measurements', 'boqitems', 'boqrevs'].map(dbAll));
+  S.users = users; S.drawings = drawings; S.measurements = measurements; S.boqitems = boqitems; S.boqrevs = boqrevs;
   S.members = members.filter(m => !m.deleted);
   const mine = S.members.filter(m => m.userId === S.user.id).map(m => m.projectId);
   S.projects = projects.filter(p => !p.deleted && mine.includes(p.id));
@@ -115,7 +117,7 @@ async function load() {
   if (S.pid) localStorage.setItem('proj', S.pid);
 }
 async function countLocal() {
-  let n = 0; for (const s of ['users', 'projects', 'members', 'tasks']) n += (await dbAll(s)).filter(r => r.sync === 'local').length; return n;
+  let n = 0; for (const s of ['users', 'projects', 'members', 'tasks', 'drawings', 'measurements', 'boqitems', 'boqrevs']) n += (await dbAll(s)).filter(r => r.sync === 'local').length; return n;
 }
 
 // ---------- priority (transparent, rule-based) ----------
@@ -178,7 +180,7 @@ async function renderShell() {
   const h = location.hash;
   const on = k => h === '#/' + k || (k === 'dashboard' && (h === '' || h === '#/')) ? 'on' : '';
   $('#bottom').innerHTML = [['dashboard', '🏠', 'Home'], ['daily', '📅', 'Today'], ['projects', '🏗️', 'Projects'], ['tasks', '✅', 'Tasks'], ['menu', '☰', 'Menu']]
-    .map(([k, i, l]) => `<a href="#/${k}" class="${on(k) || (k === 'menu' && /#\/(s\/|settings|backup|menu)/.test(h) ? 'on' : '')}"><span>${i}</span>${l}</a>`).join('');
+    .map(([k, i, l]) => `<a href="#/${k}" class="${on(k) || (k === 'menu' && /#\/(s\/|settings|backup|menu|drawings?|boq)/.test(h) ? 'on' : '')}"><span>${i}</span>${l}</a>`).join('');
   return r;
 }
 
@@ -222,18 +224,19 @@ function viewDashboard() {
     labour: () => soon('Labour attendance', 'Attendance arrives in Phase 4.')
   };
   const LAYOUT = {
-    owner: ['kpi', 'next', 'overdue', 'blocked', 'approvals', 'money'],
+    owner: ['kpi', 'next', 'boq', 'overdue', 'blocked', 'approvals', 'money'],
     administrator: ['kpi', 'next', 'overdue', 'blocked', 'approvals'],
-    project_manager: ['next', 'today', 'overdue', 'blocked', 'materials'],
+    project_manager: ['next', 'boq', 'today', 'overdue', 'blocked', 'materials'],
     contractor: ['next', 'today', 'overdue', 'blocked', 'labour', 'materials'],
     site_supervisor: ['today', 'overdue', 'blocked', 'labour', 'materials', 'approvals'],
-    engineer: ['next', 'today', 'overdue', 'drawings', 'compliance'],
-    quantity_surveyor: ['next', 'drawings', 'money', 'overdue'],
+    engineer: ['next', 'today', 'overdue', 'drawings', 'boq', 'compliance'],
+    quantity_surveyor: ['next', 'drawings', 'boq', 'money', 'overdue'],
     accountant: ['money', 'kpi', 'overdue'],
     storekeeper: ['materials', 'today', 'overdue'],
     labour_supervisor: ['labour', 'today', 'overdue', 'blocked'],
     viewer: ['kpi', 'overdue', 'blocked']
   };
+  Object.assign(C, DASH_EXT);
   const keys = (LAYOUT[r] || LAYOUT.viewer).filter(k => k !== 'kpi' || can('finance') || r === 'owner');
   return `<h1>${esc(p.name)}</h1><p class="muted small">${esc(cityOf(p))} · ${ROLE_LABEL[r]} view</p>${keys.map(k => C[k]()).join('')}`;
 }
@@ -284,7 +287,7 @@ function viewProject(id) {
 function viewMenu() {
   if (!curProject()) return emptyProject();
   const items = SECTIONS.filter(s => s.a === null || can(s.a));
-  return `<h1>Menu</h1><div class="menu">${items.map(s => `<a href="#/${s.live && ['dashboard', 'daily', 'projects', 'tasks', 'settings', 'backup'].includes(s.k) ? s.k : 's/' + s.k}"><span>${s.i}</span>${esc(s.n)}<div class="tag">${s.live ? 'Available' : 'Phase ' + s.ph}</div></a>`).join('')}</div>`;
+  return `<h1>Menu</h1><div class="menu">${items.map(s => `<a href="#/${s.live ? s.k : 's/' + s.k}"><span>${s.i}</span>${esc(s.n)}<div class="tag">${s.live ? 'Available' : 'Phase ' + s.ph}</div></a>`).join('')}</div>`;
 }
 
 function viewPlanned(k) {
@@ -306,12 +309,12 @@ async function viewSettings() {
 
 async function viewBackup() {
   if (!can('admin')) return locked();
-  const counts = {}; for (const s of STORES) counts[s] = (await dbAll(s)).length;
+  const counts = {}; for (const s of BACKUP_STORES) counts[s] = (await dbAll(s)).length;
   const last = JSON.parse(localStorage.getItem('lastBackup') || 'null'); const pending = await countLocal();
   return `<h1>Backup & Synchronization</h1>
   <div class="card"><b>Sync state</b><p>Saved locally on this device: ${pending} record(s). Server synchronization is <b>not configured</b>, so no record is synchronized or backed up off this device yet.</p>
   <p class="muted small">States that will be supported once a server exists: pending, synchronizing, synchronized, failed, conflict requires attention.</p></div>
-  <div class="card"><b>Export a backup file</b><p class="small muted">Records: ${Object.entries(counts).map(([k, v]) => k + ' ' + v).join(' · ')}. The file includes account password hashes, so set a passphrase to encrypt it (AES-GCM).</p>
+  <div class="card"><b>Export a backup file</b><p class="small muted">Records: ${Object.entries(counts).map(([k, v]) => k + ' ' + v).join(' · ')}. The file includes account password hashes, so set a passphrase to encrypt it (AES-GCM). <b>Uploaded drawing files are not included yet</b>; keep your original drawings.</p>
   <form data-f="export"><label>Passphrase (recommended)<input type="password" name="pass" autocomplete="new-password"></label><div class="err"></div><button class="primary">Create verified backup</button></form>
   ${last ? `<p class="small muted">Last export file: ${esc(last.at.slice(0, 16).replace('T', ' '))} UTC · ${last.encrypted ? 'encrypted' : 'NOT encrypted'} · checksum ${esc(last.checksum.slice(0, 12))}…<br>This confirms a file was created and verified. It does not confirm where you stored it.</p>` : '<p class="small muted">No export made yet.</p>'}</div>
   <div class="card"><b>Restore from a backup file</b><p class="small muted">Newer local records are never overwritten. Records that differ on both sides are reported as conflicts and skipped.</p>
@@ -331,7 +334,7 @@ async function readBackup(text, pass) {
   return { data: JSON.parse(plain), meta: o };
 }
 async function makeBackup(pass) {
-  const data = {}; for (const s of STORES) data[s] = await dbAll(s);
+  const data = {}; for (const s of BACKUP_STORES) data[s] = await dbAll(s);
   const plain = JSON.stringify(data); const checksum = await sha256(plain);
   const out = { format: 'ethcm-backup', v: 1, exportedAt: new Date().toISOString(), device: DEVICE, checksum, encrypted: !!pass };
   if (pass) {
@@ -346,7 +349,7 @@ async function makeBackup(pass) {
 }
 async function restoreBackup(text, pass) {
   const { data } = await readBackup(text, pass); const r = { added: 0, updated: 0, skipped: 0, conflicts: 0 };
-  for (const s of STORES) for (const rec of data[s] || []) {
+  for (const s of BACKUP_STORES) for (const rec of data[s] || []) {
     const loc = await dbGet(s, rec.id);
     if (!loc) { await dbPut(s, rec); r.added++; }
     else if ((rec.version || 0) > (loc.version || 0)) { await dbPut(s, rec); r.updated++; }
@@ -508,12 +511,13 @@ async function render() {
   else if (a === 's') html = viewPlanned(b);
   else if (a === 'settings') html = await viewSettings();
   else if (a === 'backup') html = await viewBackup();
+  else if (ROUTES[a]) html = await ROUTES[a](b);
   else html = viewDashboard();
   $('#main').innerHTML = html;
   const th = $('#theme'); if (th) th.value = localStorage.getItem('theme') || 'auto';
 }
 
-(async function init() {
+async function init() {
   applyTheme();
   if (!crypto?.subtle) { document.body.innerHTML = '<p style="padding:20px">This app needs a secure context (HTTPS or localhost) for encryption features.</p>'; return; }
   db = await openDB();
@@ -521,4 +525,5 @@ async function render() {
   if (sid) S.user = (await dbGet('users', sid)) || null;
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => { });
   await render();
-})();
+}
+window.addEventListener('load', init); // after boq.js has registered its routes
