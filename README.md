@@ -14,3 +14,6 @@ until Phase 7; use Backup & Synchronization to export a file.
 Drawings (upload, revisions, measurements with confirmation) and a transparent BOQ quantity engine
 (formulas, deductions, waste you set, verification, approved revisions, CSV export). Quantities only; prices are Phase 3.
 Update on GitHub: upload ALL files again (new: boq.js; changed: app.js, index.html, sw.js, styles.css).
+
+## UI refresh
+Modern design, floating navigation, custom bottom-sheet dropdowns (ui.js). Upload ALL files again (new: ui.js).
