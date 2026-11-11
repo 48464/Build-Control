@@ -12,8 +12,8 @@ const etb = n => n == null || n === '' ? 'Not set' : new Intl.NumberFormat('en-U
 const DEVICE = (() => { let d = localStorage.getItem('deviceId'); if (!d) { d = uid(); localStorage.setItem('deviceId', d); } return d; })();
 
 // ---------- reference data ----------
-const STORES = ['users', 'projects', 'members', 'tasks', 'audit', 'drawings', 'measurements', 'boqitems', 'boqrevs', 'files', 'materials', 'suppliers', 'quotes', 'labourrates', 'equiprates', 'rates', 'pricing', 'progress', 'progcfg', 'invtx', 'orders', 'workers', 'attendance', 'dailyreports', 'expenses', 'payments', 'contracts', 'variations', 'documents', 'finsettings'];
-const PRICE_STORES = ['materials', 'suppliers', 'quotes', 'labourrates', 'equiprates', 'rates', 'pricing', 'progress', 'progcfg', 'invtx', 'orders', 'workers', 'attendance', 'dailyreports', 'expenses', 'payments', 'contracts', 'variations', 'documents', 'finsettings']; // extension stores loaded generically
+const STORES = ['users', 'projects', 'members', 'tasks', 'audit', 'drawings', 'measurements', 'boqitems', 'boqrevs', 'files', 'materials', 'suppliers', 'quotes', 'labourrates', 'equiprates', 'rates', 'pricing', 'progress', 'progcfg', 'invtx', 'orders', 'workers', 'attendance', 'dailyreports', 'expenses', 'payments', 'contracts', 'variations', 'documents', 'finsettings', 'inspections', 'incidents', 'compitems'];
+const PRICE_STORES = ['materials', 'suppliers', 'quotes', 'labourrates', 'equiprates', 'rates', 'pricing', 'progress', 'progcfg', 'invtx', 'orders', 'workers', 'attendance', 'dailyreports', 'expenses', 'payments', 'contracts', 'variations', 'documents', 'finsettings', 'inspections', 'incidents', 'compitems']; // extension stores loaded generically
 const BACKUP_STORES = STORES.filter(s => s !== 'files'); // drawing files are not in backups yet
 const ROUTES = {}, DASH_EXT = {}; // extension points used by boq.js
 const CITIES = ['Shashamane', 'Addis Ababa', 'Hawassa', 'Adama', 'Bishoftu', 'Jimma', 'Bahir Dar', 'Dire Dawa', 'Other'];
@@ -58,7 +58,7 @@ const SECTIONS = [
 // ---------- IndexedDB ----------
 let db;
 const openDB = () => new Promise((res, rej) => {
-  const r = indexedDB.open('ethiopian-construction', 5);
+  const r = indexedDB.open('ethiopian-construction', 6);
   r.onupgradeneeded = () => { for (const s of STORES) if (!r.result.objectStoreNames.contains(s)) r.result.createObjectStore(s, { keyPath: 'id' }); };
   r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
 });
@@ -100,7 +100,7 @@ async function aesKey(pass, salt) {
 }
 
 // ---------- state ----------
-const S = { user: null, users: [], projects: [], members: [], tasks: [], drawings: [], measurements: [], boqitems: [], boqrevs: [], materials: [], suppliers: [], quotes: [], labourrates: [], equiprates: [], rates: [], pricing: [], progress: [], progcfg: [], invtx: [], orders: [], workers: [], attendance: [], dailyreports: [], expenses: [], payments: [], contracts: [], variations: [], documents: [], finsettings: [], pid: localStorage.getItem('proj') };
+const S = { user: null, users: [], projects: [], members: [], tasks: [], drawings: [], measurements: [], boqitems: [], boqrevs: [], materials: [], suppliers: [], quotes: [], labourrates: [], equiprates: [], rates: [], pricing: [], progress: [], progcfg: [], invtx: [], orders: [], workers: [], attendance: [], dailyreports: [], expenses: [], payments: [], contracts: [], variations: [], documents: [], finsettings: [], inspections: [], incidents: [], compitems: [], pid: localStorage.getItem('proj') };
 const myRole = () => S.user && S.pid ? S.members.find(m => m.projectId === S.pid && m.userId === S.user.id)?.role : null;
 const curProject = () => S.projects.find(p => p.id === S.pid);
 const userName = id => S.users.find(u => u.id === id)?.name || '';
@@ -187,7 +187,7 @@ async function renderShell() {
   const on = k => h === '#/' + k || (k === 'dashboard' && (h === '' || h === '#/')) ? 'on' : '';
   const IC = { dashboard: '<path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/>', daily: '<rect x="3" y="5" width="18" height="16" rx="3"/><path d="M8 3v4M16 3v4M3 10h18"/>', projects: '<path d="M3 20h18"/><path d="M6 20V8l6-4 6 4v12"/><path d="M10 20v-5h4v5"/>', tasks: '<circle cx="12" cy="12" r="9"/><path d="M8 12.5l3 3 5-6"/>', menu: '<path d="M4 7h16M4 12h16M4 17h16"/>' };
   $('#bottom').innerHTML = [['dashboard', 'Home'], ['daily', 'Today'], ['projects', 'Projects'], ['tasks', 'Tasks'], ['menu', 'Menu']]
-    .map(([k, l]) => `<a href="#/${k}" class="${on(k) || (k === 'menu' && /#\/(s\/|settings|backup|menu|drawings?|boq|suppliers|material|cost|rate|progress|progitem|inventory|labour|report|finance|files|doc)/.test(h) ? 'on' : '')}"><svg viewBox="0 0 24 24">${IC[k]}</svg>${l}</a>`).join('');
+    .map(([k, l]) => `<a href="#/${k}" class="${on(k) || (k === 'menu' && /#\/(s\/|settings|backup|menu|drawings?|boq|suppliers|material|cost|rate|progress|progitem|inventory|labour|report|finance|files|doc|quality|inspection|compliance|alerts|analytics)/.test(h) ? 'on' : '')}"><svg viewBox="0 0 24 24">${IC[k]}</svg>${l}</a>`).join('');
   return r;
 }
 
@@ -254,7 +254,7 @@ function viewDashboard() {
     viewer: ['kpi', 'overdue', 'blocked']
   };
   Object.assign(C, DASH_EXT);
-  const keys = (LAYOUT[r] || LAYOUT.viewer).filter(k => k !== 'kpi' || can('finance') || r === 'owner');
+  const keys = (LAYOUT[r] || LAYOUT.viewer).filter(k => k !== 'kpi' || can('finance') || r === 'owner'); if (C.alerts && !keys.includes('alerts')) keys.unshift('alerts');
   return `<h1>${esc(p.name)}</h1><p class="muted small">${esc(cityOf(p))} · ${ROLE_LABEL[r]} view</p>${keys.map(k => C[k]()).join('')}`;
 }
 
