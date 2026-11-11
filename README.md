@@ -25,3 +25,6 @@ Upload ALL files again (new: prices.js).
 ## Phase 6
 Daily activities, scheduling (list + Gantt), dependencies, approval workflow, progress from verified quantities, inventory and procurement, labour attendance, daily report.
 Upload ALL files again (new: ops.js).
+
+## Guide
+In-app help (new: guide.js). Menu → "How to use EthioBuild" shows the 16 steps in order, with what each module does, steps and a worked example. Every module page also has a collapsible "How to use this page" card. Upload ALL files again (new: guide.js; changed: index.html, sw.js, app.js, styles.css, README.md).

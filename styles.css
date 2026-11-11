@@ -122,3 +122,15 @@ img{max-width:100%}
 .g-track{position:relative;height:16px;margin-top:3px;border-radius:8px;background:var(--surface2)}.g-bar{position:absolute;top:0;height:16px;border-radius:8px}
 .g-today{position:absolute;top:18px;bottom:0;width:2px;background:var(--accent);z-index:2}
 @media print{#top,#bottom,.noprint,#toast{display:none!important}body{background:#fff;color:#000}main{padding:0;max-width:none}.card{box-shadow:none;border:1px solid #bbb}}
+
+/* guide.js */
+.gdesc{display:block;font-weight:400;font-size:12px;color:var(--muted);margin-top:4px;line-height:1.35}
+.gstep{display:flex!important;gap:12px;align-items:center}
+.gnum{flex:none;width:34px;height:34px;border-radius:50%;background:var(--brand-soft);color:var(--brand);display:grid;place-items:center;font-weight:700;font-size:15px}
+.gsteps{margin:6px 0 10px;padding-left:20px}.gsteps li{margin:6px 0;line-height:1.45}
+.gex{background:var(--brand-soft);border-radius:12px;padding:10px 12px;line-height:1.45}
+.gbtn{display:inline-block;padding:9px 14px;border-radius:999px;border:1px solid var(--line);background:var(--surface);font-weight:600}
+a.gbtn.primary{background:var(--brand);color:var(--brand-ink);border-color:transparent}
+details.ghelp summary{cursor:pointer;font-weight:600;list-style:none}
+details.ghelp summary::-webkit-details-marker{display:none}
+details.ghelp[open] summary{margin-bottom:6px}

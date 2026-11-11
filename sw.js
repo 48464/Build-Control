@@ -1,5 +1,5 @@
-const CACHE='ethcm-shell-v8';
-const SHELL=['./','index.html','styles.css','app.js','boq.js','prices.js','ops.js','finance.js','docs.js','quality.js','ui.js','manifest.webmanifest','icon.svg','icon-192.png','icon-512.png','icon-maskable-512.png'];
+const CACHE='ethcm-shell-v9';
+const SHELL=['./','index.html','styles.css','app.js','boq.js','prices.js','ops.js','finance.js','docs.js','quality.js','guide.js','ui.js','manifest.webmanifest','icon.svg','icon-192.png','icon-512.png','icon-maskable-512.png'];
 // Cache each file on its own: one missing file must never stop the service worker from installing (Chrome needs it to offer "Install").
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>Promise.allSettled(SHELL.map(u=>c.add(u)))).then(()=>self.skipWaiting()))});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()))});
