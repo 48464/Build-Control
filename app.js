@@ -12,8 +12,8 @@ const etb = n => n == null || n === '' ? 'Not set' : new Intl.NumberFormat('en-U
 const DEVICE = (() => { let d = localStorage.getItem('deviceId'); if (!d) { d = uid(); localStorage.setItem('deviceId', d); } return d; })();
 
 // ---------- reference data ----------
-const STORES = ['users', 'projects', 'members', 'tasks', 'audit', 'drawings', 'measurements', 'boqitems', 'boqrevs', 'files', 'materials', 'suppliers', 'quotes', 'labourrates', 'equiprates', 'rates', 'pricing', 'progress', 'progcfg', 'invtx', 'orders', 'workers', 'attendance', 'dailyreports'];
-const PRICE_STORES = ['materials', 'suppliers', 'quotes', 'labourrates', 'equiprates', 'rates', 'pricing', 'progress', 'progcfg', 'invtx', 'orders', 'workers', 'attendance', 'dailyreports']; // extension stores loaded generically
+const STORES = ['users', 'projects', 'members', 'tasks', 'audit', 'drawings', 'measurements', 'boqitems', 'boqrevs', 'files', 'materials', 'suppliers', 'quotes', 'labourrates', 'equiprates', 'rates', 'pricing', 'progress', 'progcfg', 'invtx', 'orders', 'workers', 'attendance', 'dailyreports', 'expenses', 'payments', 'contracts', 'variations', 'documents', 'finsettings'];
+const PRICE_STORES = ['materials', 'suppliers', 'quotes', 'labourrates', 'equiprates', 'rates', 'pricing', 'progress', 'progcfg', 'invtx', 'orders', 'workers', 'attendance', 'dailyreports', 'expenses', 'payments', 'contracts', 'variations', 'documents', 'finsettings']; // extension stores loaded generically
 const BACKUP_STORES = STORES.filter(s => s !== 'files'); // drawing files are not in backups yet
 const ROUTES = {}, DASH_EXT = {}; // extension points used by boq.js
 const CITIES = ['Shashamane', 'Addis Ababa', 'Hawassa', 'Adama', 'Bishoftu', 'Jimma', 'Bahir Dar', 'Dire Dawa', 'Other'];
@@ -58,7 +58,7 @@ const SECTIONS = [
 // ---------- IndexedDB ----------
 let db;
 const openDB = () => new Promise((res, rej) => {
-  const r = indexedDB.open('ethiopian-construction', 4);
+  const r = indexedDB.open('ethiopian-construction', 5);
   r.onupgradeneeded = () => { for (const s of STORES) if (!r.result.objectStoreNames.contains(s)) r.result.createObjectStore(s, { keyPath: 'id' }); };
   r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
 });
@@ -100,7 +100,7 @@ async function aesKey(pass, salt) {
 }
 
 // ---------- state ----------
-const S = { user: null, users: [], projects: [], members: [], tasks: [], drawings: [], measurements: [], boqitems: [], boqrevs: [], materials: [], suppliers: [], quotes: [], labourrates: [], equiprates: [], rates: [], pricing: [], progress: [], progcfg: [], invtx: [], orders: [], workers: [], attendance: [], dailyreports: [], pid: localStorage.getItem('proj') };
+const S = { user: null, users: [], projects: [], members: [], tasks: [], drawings: [], measurements: [], boqitems: [], boqrevs: [], materials: [], suppliers: [], quotes: [], labourrates: [], equiprates: [], rates: [], pricing: [], progress: [], progcfg: [], invtx: [], orders: [], workers: [], attendance: [], dailyreports: [], expenses: [], payments: [], contracts: [], variations: [], documents: [], finsettings: [], pid: localStorage.getItem('proj') };
 const myRole = () => S.user && S.pid ? S.members.find(m => m.projectId === S.pid && m.userId === S.user.id)?.role : null;
 const curProject = () => S.projects.find(p => p.id === S.pid);
 const userName = id => S.users.find(u => u.id === id)?.name || '';
@@ -143,6 +143,7 @@ function priority(t) {
   if (t.manualPriority && t.manualPriority !== 'auto') { level = t.manualPriority; why.push('Priority set manually'); }
   return { level, score: s, why };
 }
+function spentKpi() { return `<div class="kpi"><span class="muted small">Actual spent</span><b>Not recorded</b></div>`; }
 const STATUS = { todo: 'To do', doing: 'In progress', blocked: 'Blocked', review: 'Awaiting approval', done: 'Done' };
 
 // ---------- UI helpers ----------
@@ -186,7 +187,7 @@ async function renderShell() {
   const on = k => h === '#/' + k || (k === 'dashboard' && (h === '' || h === '#/')) ? 'on' : '';
   const IC = { dashboard: '<path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/>', daily: '<rect x="3" y="5" width="18" height="16" rx="3"/><path d="M8 3v4M16 3v4M3 10h18"/>', projects: '<path d="M3 20h18"/><path d="M6 20V8l6-4 6 4v12"/><path d="M10 20v-5h4v5"/>', tasks: '<circle cx="12" cy="12" r="9"/><path d="M8 12.5l3 3 5-6"/>', menu: '<path d="M4 7h16M4 12h16M4 17h16"/>' };
   $('#bottom').innerHTML = [['dashboard', 'Home'], ['daily', 'Today'], ['projects', 'Projects'], ['tasks', 'Tasks'], ['menu', 'Menu']]
-    .map(([k, l]) => `<a href="#/${k}" class="${on(k) || (k === 'menu' && /#\/(s\/|settings|backup|menu|drawings?|boq|suppliers|material|cost|rate|progress|progitem|inventory|labour|report)/.test(h) ? 'on' : '')}"><svg viewBox="0 0 24 24">${IC[k]}</svg>${l}</a>`).join('');
+    .map(([k, l]) => `<a href="#/${k}" class="${on(k) || (k === 'menu' && /#\/(s\/|settings|backup|menu|drawings?|boq|suppliers|material|cost|rate|progress|progitem|inventory|labour|report|finance|files|doc)/.test(h) ? 'on' : '')}"><svg viewBox="0 0 24 24">${IC[k]}</svg>${l}</a>`).join('');
   return r;
 }
 
@@ -227,7 +228,7 @@ function viewDashboard() {
   const ranked = byScore(open);
   const done = all.filter(t => t.status === 'done').length;
   const C = {
-    kpi: () => `<div class="grid"><div class="kpi"><span class="muted small">Approved budget</span><b>${etb(p.budget)}</b></div><div class="kpi"><span class="muted small">Actual spent</span><b>Not recorded</b><span class="tag">Expenses: Phase 5</span></div>${physKpi()}<div class="kpi"><span class="muted small">Tasks completed</span><b>${done} / ${all.length}</b><span class="tag">Task count, not construction progress</span></div></div>`,
+    kpi: () => `<div class="grid"><div class="kpi"><span class="muted small">Approved budget</span><b>${etb(p.budget)}</b></div>${spentKpi()}${physKpi()}<div class="kpi"><span class="muted small">Tasks completed</span><b>${done} / ${all.length}</b><span class="tag">Task count, not construction progress</span></div></div>`,
     next: () => `<h2>Next most important action</h2>${ranked[0] ? taskCard(ranked[0]) : '<p class="muted small">No open tasks.</p>'}`,
     today: () => `<h2>Today (${today.length})</h2>${taskList(byScore(today), 'Nothing is due today.')}`,
     overdue: () => `<h2>Overdue (${overdue.length})</h2>${taskList(byScore(overdue), 'Nothing is overdue. Overdue tasks stay open until someone completes them.')}`,
@@ -332,7 +333,7 @@ async function viewBackup() {
   <div class="card"><b>Sync state</b><p>Saved locally on this device: ${pending} record(s). Server synchronization is <b>not configured</b>, so no record is synchronized or backed up off this device yet.</p>
   <p class="muted small">States that will be supported once a server exists: pending, synchronizing, synchronized, failed, conflict requires attention.</p></div>
   <div class="card"><b>Export a backup file</b><p class="small muted">Records: ${Object.entries(counts).map(([k, v]) => k + ' ' + v).join(' · ')}. The file includes account password hashes, so set a passphrase to encrypt it (AES-GCM). <b>Uploaded drawing files are not included yet</b>; keep your original drawings.</p>
-  <form data-f="export"><label>Passphrase (recommended)<input type="password" name="pass" autocomplete="new-password"></label><div class="err"></div><button class="primary">Create verified backup</button></form>
+  <form data-f="export"><label class="chk"><input type="checkbox" name="files"> Include drawings, photos and documents (max 60 MB)</label><label>Passphrase (recommended)<input type="password" name="pass" autocomplete="new-password"></label><div class="err"></div><button class="primary">Create verified backup</button></form>
   ${last ? `<p class="small muted">Last export file: ${esc(last.at.slice(0, 16).replace('T', ' '))} UTC · ${last.encrypted ? 'encrypted' : 'NOT encrypted'} · checksum ${esc(last.checksum.slice(0, 12))}…<br>This confirms a file was created and verified. It does not confirm where you stored it.</p>` : '<p class="small muted">No export made yet.</p>'}</div>
   <div class="card"><b>Restore from a backup file</b><p class="small muted">Newer local records are never overwritten. Records that differ on both sides are reported as conflicts and skipped.</p>
   <label>Backup file<input type="file" id="restore" accept=".json,application/json"></label><label>Passphrase (if encrypted)<input type="password" id="restore-pass" autocomplete="off"></label></div>`;
@@ -350,8 +351,11 @@ async function readBackup(text, pass) {
   if (await sha256(plain) !== o.checksum) throw new Error('Integrity check failed: the file is damaged or altered.');
   return { data: JSON.parse(plain), meta: o };
 }
-async function makeBackup(pass) {
+const FILE_CAP = 60 * 1048576;
+async function blobB64(b) { const u = new Uint8Array(await b.arrayBuffer()); let s = ''; for (let i = 0; i < u.length; i += 32768) s += String.fromCharCode.apply(null, u.subarray(i, i + 32768)); return btoa(s); }
+async function makeBackup(pass, withFiles) {
   const data = {}; for (const s of BACKUP_STORES) data[s] = await dbAll(s);
+  if (withFiles) { const fl = []; let tot = 0, skipped = 0; for (const f of await dbAll('files')) { if (!f.blob) continue; if (tot + f.blob.size > FILE_CAP) { skipped++; continue; } tot += f.blob.size; fl.push({ id: f.id, type: f.blob.type, b64: await blobB64(f.blob) }); } if (skipped) throw new Error(`Files total more than 60 MB (${skipped} not included). Create a backup without files, or delete large files first.`); data.__files = fl; }
   const plain = JSON.stringify(data); const checksum = await sha256(plain);
   const out = { format: 'ethcm-backup', v: 1, exportedAt: new Date().toISOString(), device: DEVICE, checksum, encrypted: !!pass };
   if (pass) {
@@ -366,6 +370,7 @@ async function makeBackup(pass) {
 }
 async function restoreBackup(text, pass) {
   const { data } = await readBackup(text, pass); const r = { added: 0, updated: 0, skipped: 0, conflicts: 0 };
+  for (const f of data.__files || []) { if (!(await dbGet('files', f.id))) { const bin = atob(f.b64), u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); await dbPut('files', { id: f.id, blob: new Blob([u], { type: f.type }) }); r.files = (r.files || 0) + 1; } }
   for (const s of BACKUP_STORES) for (const rec of data[s] || []) {
     const loc = await dbGet(s, rec.id);
     if (!loc) { await dbPut(s, rec); r.added++; }
@@ -451,7 +456,7 @@ const F = {
     await save('members', { projectId: S.pid, userId: u.id, role: d.role }, `Added ${u.name} as ${ROLE_LABEL[d.role]}`);
   },
   async export(d, form) {
-    const b = await makeBackup(d.pass || '');
+    const b = await makeBackup(d.pass || '', !!d.files);
     const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([b.text], { type: 'application/json' }));
     a.download = `ethiobuild-backup-${todayStr()}.json`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 5000);
     localStorage.setItem('lastBackup', JSON.stringify({ at: new Date().toISOString(), checksum: b.checksum, encrypted: b.encrypted }));

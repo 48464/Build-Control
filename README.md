@@ -22,6 +22,6 @@ Modern design, floating navigation, custom bottom-sheet dropdowns (ui.js). Uploa
 Price database (materials, suppliers, dated quotations with reliability labels), labour and equipment rates, CSV price import, unit-rate analysis, cost estimate. No prices are built in.
 Upload ALL files again (new: prices.js).
 
-## Phase 4
+## Phase 5
 Daily activities, scheduling (list + Gantt), dependencies, approval workflow, progress from verified quantities, inventory and procurement, labour attendance, daily report.
 Upload ALL files again (new: ops.js).

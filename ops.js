@@ -236,6 +236,7 @@ function buildReport(d) {
     used: tx.filter(t => t.type === 'issue' || t.type === 'consumption').map(t => `${mname(t.materialId)}: ${fmt(t.qty)} ${S.materials.find(m => m.id === t.materialId)?.unit || ''}`),
     progress: ups.map(u => { const it = itemOf(u.itemId); return `${it ? it.code + ' ' + it.description : 'Item'}: ${fmt(u.qty)} ${it?.unit || ''} (${u.status === 'verified' ? 'verified' : u.status === 'rejected' ? 'sent back' : 'awaiting verification'})`; }),
     photos: sum(ups.map(u => ({ n: (u.photos || []).length })), 'n'),
+    expenses: typeof dayExpenses === 'function' ? dayExpenses(d) : null,
     problems: ts.filter(t => t.status === 'blocked').map(t => `${t.title}${t.delayCause ? ' (' + t.delayCause + ')' : ''}${t.blockReason ? ': ' + t.blockReason : ''}`)
   };
 }
@@ -245,7 +246,7 @@ function viewReport(date) {
   return `<a href="#/daily/${d}" class="small muted noprint">← Daily activities</a><h1>Daily site report · ${d}</h1>
   <div class="card small">Project: <b>${esc(curProject().name)}</b> · ${esc(pcity())}<br>${sub ? `Submitted by <b>${esc(sub.byName)}</b> on ${esc(sub.submittedAt.slice(0, 16).replace('T', ' '))} UTC. This is a frozen copy.` : '<b>Draft</b>: generated from today’s records; not submitted.'}</div>
   <div class="card"><h2 style="margin-top:0">Activities completed</h2>${L(r.done)}<h2>Planned and still open</h2>${L(r.planned)}<h2>Labour attendance (${r.labourDays} labour-days)</h2>${L(r.labour)}<h2>Materials received</h2>${L(r.received)}<h2>Materials used</h2>${L(r.used)}<h2>Work progress recorded</h2>${L(r.progress)}<p class="small">Photographs attached: ${r.photos}</p><h2>Problems and delays</h2>${L(r.problems)}${sub?.notes ? `<h2>Notes</h2><p class="small">${esc(sub.notes)}</p>` : ''}
-  <p class="small muted">Expenses and equipment use arrive with Phase 5. Progress here includes unverified entries as labelled.</p></div>
+  ${r.expenses ? `<h2>Expenses recorded</h2>${L(r.expenses)}` : ''}<p class="small muted">Equipment use is not tracked separately. Progress here includes unverified entries as labelled.</p></div>
   <div class="row noprint"><button data-a="print">Print / Save as PDF</button>${can('reports', 'e') && !sub ? `<button class="primary" data-a="submit-report" data-id="${d}">Submit report</button>` : ''}</div>`;
 }
 
