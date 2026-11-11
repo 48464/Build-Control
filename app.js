@@ -12,8 +12,8 @@ const etb = n => n == null || n === '' ? 'Not set' : new Intl.NumberFormat('en-U
 const DEVICE = (() => { let d = localStorage.getItem('deviceId'); if (!d) { d = uid(); localStorage.setItem('deviceId', d); } return d; })();
 
 // ---------- reference data ----------
-const STORES = ['users', 'projects', 'members', 'tasks', 'audit', 'drawings', 'measurements', 'boqitems', 'boqrevs', 'files', 'materials', 'suppliers', 'quotes', 'labourrates', 'equiprates', 'rates', 'pricing'];
-const PRICE_STORES = ['materials', 'suppliers', 'quotes', 'labourrates', 'equiprates', 'rates', 'pricing'];
+const STORES = ['users', 'projects', 'members', 'tasks', 'audit', 'drawings', 'measurements', 'boqitems', 'boqrevs', 'files', 'materials', 'suppliers', 'quotes', 'labourrates', 'equiprates', 'rates', 'pricing', 'progress', 'progcfg', 'invtx', 'orders', 'workers', 'attendance', 'dailyreports'];
+const PRICE_STORES = ['materials', 'suppliers', 'quotes', 'labourrates', 'equiprates', 'rates', 'pricing', 'progress', 'progcfg', 'invtx', 'orders', 'workers', 'attendance', 'dailyreports']; // extension stores loaded generically
 const BACKUP_STORES = STORES.filter(s => s !== 'files'); // drawing files are not in backups yet
 const ROUTES = {}, DASH_EXT = {}; // extension points used by boq.js
 const CITIES = ['Shashamane', 'Addis Ababa', 'Hawassa', 'Adama', 'Bishoftu', 'Jimma', 'Bahir Dar', 'Dire Dawa', 'Other'];
@@ -58,7 +58,7 @@ const SECTIONS = [
 // ---------- IndexedDB ----------
 let db;
 const openDB = () => new Promise((res, rej) => {
-  const r = indexedDB.open('ethiopian-construction', 3);
+  const r = indexedDB.open('ethiopian-construction', 4);
   r.onupgradeneeded = () => { for (const s of STORES) if (!r.result.objectStoreNames.contains(s)) r.result.createObjectStore(s, { keyPath: 'id' }); };
   r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
 });
@@ -100,7 +100,7 @@ async function aesKey(pass, salt) {
 }
 
 // ---------- state ----------
-const S = { user: null, users: [], projects: [], members: [], tasks: [], drawings: [], measurements: [], boqitems: [], boqrevs: [], materials: [], suppliers: [], quotes: [], labourrates: [], equiprates: [], rates: [], pricing: [], pid: localStorage.getItem('proj') };
+const S = { user: null, users: [], projects: [], members: [], tasks: [], drawings: [], measurements: [], boqitems: [], boqrevs: [], materials: [], suppliers: [], quotes: [], labourrates: [], equiprates: [], rates: [], pricing: [], progress: [], progcfg: [], invtx: [], orders: [], workers: [], attendance: [], dailyreports: [], pid: localStorage.getItem('proj') };
 const myRole = () => S.user && S.pid ? S.members.find(m => m.projectId === S.pid && m.userId === S.user.id)?.role : null;
 const curProject = () => S.projects.find(p => p.id === S.pid);
 const userName = id => S.users.find(u => u.id === id)?.name || '';
@@ -136,11 +136,14 @@ function priority(t) {
   if (t.cost) { s += 15; why.push('Financial impact'); }
   if (t.blocks) { s += 15; why.push('Later work depends on it'); }
   if (t.status === 'blocked') { s += 10; why.push('Currently blocked'); }
+  const dependents = S.tasks.filter(x => !x.deleted && x.projectId === t.projectId && x.status !== 'done' && (x.deps || []).includes(t.id)).length;
+  if (dependents) { s += 15; why.push(`${dependents} later task(s) depend on it`); }
+  if (t.boqItemId && typeof shortageForItem === 'function' && shortageForItem(t.boqItemId)) { s += 10; why.push('Material shortage for its BOQ item'); }
   let level = s >= 60 ? 'Critical' : s >= 40 ? 'High' : s >= 20 ? 'Medium' : 'Low';
   if (t.manualPriority && t.manualPriority !== 'auto') { level = t.manualPriority; why.push('Priority set manually'); }
   return { level, score: s, why };
 }
-const STATUS = { todo: 'To do', doing: 'In progress', blocked: 'Blocked', done: 'Done' };
+const STATUS = { todo: 'To do', doing: 'In progress', blocked: 'Blocked', review: 'Awaiting approval', done: 'Done' };
 
 // ---------- UI helpers ----------
 function toast(m) { const t = $('#toast'); t.textContent = m; t.classList.add('show'); clearTimeout(toast.h); toast.h = setTimeout(() => t.classList.remove('show'), 2600); }
@@ -183,7 +186,7 @@ async function renderShell() {
   const on = k => h === '#/' + k || (k === 'dashboard' && (h === '' || h === '#/')) ? 'on' : '';
   const IC = { dashboard: '<path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/>', daily: '<rect x="3" y="5" width="18" height="16" rx="3"/><path d="M8 3v4M16 3v4M3 10h18"/>', projects: '<path d="M3 20h18"/><path d="M6 20V8l6-4 6 4v12"/><path d="M10 20v-5h4v5"/>', tasks: '<circle cx="12" cy="12" r="9"/><path d="M8 12.5l3 3 5-6"/>', menu: '<path d="M4 7h16M4 12h16M4 17h16"/>' };
   $('#bottom').innerHTML = [['dashboard', 'Home'], ['daily', 'Today'], ['projects', 'Projects'], ['tasks', 'Tasks'], ['menu', 'Menu']]
-    .map(([k, l]) => `<a href="#/${k}" class="${on(k) || (k === 'menu' && /#\/(s\/|settings|backup|menu|drawings?|boq|suppliers|material|cost|rate)/.test(h) ? 'on' : '')}"><svg viewBox="0 0 24 24">${IC[k]}</svg>${l}</a>`).join('');
+    .map(([k, l]) => `<a href="#/${k}" class="${on(k) || (k === 'menu' && /#\/(s\/|settings|backup|menu|drawings?|boq|suppliers|material|cost|rate|progress|progitem|inventory|labour|report)/.test(h) ? 'on' : '')}"><svg viewBox="0 0 24 24">${IC[k]}</svg>${l}</a>`).join('');
   return r;
 }
 
@@ -191,13 +194,23 @@ async function renderShell() {
 const emptyProject = () => `<div class="card"><h1>Welcome</h1><p>Create your first project to begin. A project holds your tasks, team and, in later phases, drawings, BOQ and costs.</p><button class="primary" data-a="new-project">Create project</button></div>`;
 const locked = () => `<div class="card"><h1>No access</h1><p class="muted">Your role on this project does not include this area. The project owner controls who can see financial records, drawings and other private information.</p></div>`;
 
+function taskExtra(t) { return ''; } // overridden by ops.js
+function physKpi() { return `<div class="kpi"><span class="muted small">Physical progress</span><b>Not measured</b><span class="tag">From verified quantities</span></div>`; } // overridden by ops.js
+function taskButtons(t, edit) {
+  const approver = can('boq', 'e') || can('quality', 'e'); let b = '';
+  if (t.status === 'review') b += approver ? `<button class="sm primary" data-a="approve-task" data-id="${t.id}">Approve</button><button class="sm" data-a="reject-task" data-id="${t.id}">Send back</button>` : '<span class="small muted">Waiting for approval</span>';
+  else if (t.status === 'done') { if (edit) b += `<button class="sm" data-a="reopen-task" data-id="${t.id}">Reopen</button>`; }
+  else if (edit) b += t.needsApproval ? `<button class="sm primary" data-a="submit-task" data-id="${t.id}">Submit for approval</button>` : `<button class="sm primary" data-a="done-task" data-id="${t.id}">Mark done</button>`;
+  if (edit) b += `<button class="sm" data-a="edit-task" data-id="${t.id}">Edit</button>`;
+  return b ? `<div class="row" style="margin-top:8px;justify-content:flex-start">${b}</div>` : '';
+}
 function taskCard(t) {
   const pr = priority(t); const edit = can('tasks', 'e'); const as = userName(t.assignee);
   return `<article class="card task p-${pr.level.toLowerCase()}"><div class="row"><strong>${esc(t.title)}</strong><span class="chip ${pr.level}">${pr.level}</span></div>
   <div class="muted small">${t.due ? 'Due ' + esc(t.due) : 'No due date'} · ${STATUS[t.status] || 'To do'}${t.stage ? ' · ' + esc(t.stage) : ''}${as ? ' · ' + esc(as) : ''}</div>
   ${t.status === 'blocked' && t.blockReason ? `<div class="small"><b>Blocked:</b> ${esc(t.blockReason)}</div>` : ''}
   <div class="small muted">Why: ${pr.why.length ? pr.why.map(esc).join(' · ') : 'No urgency factors recorded'}</div>
-  ${edit ? `<div class="row" style="margin-top:8px;justify-content:flex-start">${t.status === 'done' ? `<button class="sm" data-a="reopen-task" data-id="${t.id}">Reopen</button>` : `<button class="sm primary" data-a="done-task" data-id="${t.id}">Mark done</button>`}<button class="sm" data-a="edit-task" data-id="${t.id}">Edit</button></div>` : ''}</article>`;
+  ${taskExtra(t)}${taskButtons(t, edit)}</article>`;
 }
 const taskList = (ts, empty) => ts.length ? ts.map(taskCard).join('') : `<p class="muted small">${empty}</p>`;
 const soon = (title, text) => `<div class="card"><b>${title}</b><div class="muted small">${text}</div></div>`;
@@ -214,7 +227,7 @@ function viewDashboard() {
   const ranked = byScore(open);
   const done = all.filter(t => t.status === 'done').length;
   const C = {
-    kpi: () => `<div class="grid"><div class="kpi"><span class="muted small">Approved budget</span><b>${etb(p.budget)}</b></div><div class="kpi"><span class="muted small">Actual spent</span><b>Not recorded</b><span class="tag">Expenses: Phase 5</span></div><div class="kpi"><span class="muted small">Physical progress</span><b>Not measured</b><span class="tag">From verified quantities: Phase 4</span></div><div class="kpi"><span class="muted small">Tasks completed</span><b>${done} / ${all.length}</b><span class="tag">Task count, not construction progress</span></div></div>`,
+    kpi: () => `<div class="grid"><div class="kpi"><span class="muted small">Approved budget</span><b>${etb(p.budget)}</b></div><div class="kpi"><span class="muted small">Actual spent</span><b>Not recorded</b><span class="tag">Expenses: Phase 5</span></div>${physKpi()}<div class="kpi"><span class="muted small">Tasks completed</span><b>${done} / ${all.length}</b><span class="tag">Task count, not construction progress</span></div></div>`,
     next: () => `<h2>Next most important action</h2>${ranked[0] ? taskCard(ranked[0]) : '<p class="muted small">No open tasks.</p>'}`,
     today: () => `<h2>Today (${today.length})</h2>${taskList(byScore(today), 'Nothing is due today.')}`,
     overdue: () => `<h2>Overdue (${overdue.length})</h2>${taskList(byScore(overdue), 'Nothing is overdue. Overdue tasks stay open until someone completes them.')}`,
@@ -307,6 +320,7 @@ async function viewSettings() {
   <div class="card"><label>Theme<select id="theme"><option value="auto" ${theme === 'auto' ? 'selected' : ''}>Match device</option><option value="light" ${theme === 'light' ? 'selected' : ''}>Light</option><option value="dark" ${theme === 'dark' ? 'selected' : ''}>Dark</option></select></label>
   <label>Language<select disabled><option>English</option></select></label><div class="muted small">Amharic and Afaan Oromo are planned. Currency is ETB; units are metric.</div></div>
   <div class="card small"><b>This device</b><br>ID: ${esc(DEVICE.slice(0, 8))}…<br>Sign-in on this device is stored locally. Remote device revocation needs the Phase 7 server.</div>
+  <div class="card"><b>Install app</b><p class="small muted">${window.matchMedia('(display-mode: standalone)').matches ? 'This app is already installed.' : 'Install it to open from your home screen and work offline.'}</p>${window.__installPrompt ? `<button class="primary" data-a="install">Install now</button>` : `<p class="small muted">If no button appears: in Chrome tap ⋮ then <b>Install app</b> or <b>Add to Home screen</b>. Open the site at its normal https address (not a file), reload once, then try again.</p>`}</div>
   <h2>Activity log</h2>${log.length ? log.map(a => `<div class="small card"><b>${esc(a.summary || a.action)}</b><div class="muted">${esc(a.at.slice(0, 16).replace('T', ' '))} UTC · ${esc(a.userName || '')} · ${esc(a.store)} ${esc(a.action)}</div></div>`).join('') : '<p class="muted small">No activity.</p>'}`;
 }
 
@@ -371,13 +385,18 @@ const projectForm = p => `<h1>${p ? 'Edit project' : 'New project'}</h1><form da
   ${fld('Planned start', 'start', p?.start, { type: 'date' })}<label>Notes<textarea name="notes" rows="2">${esc(p?.notes || '')}</textarea></label>
   <div class="err"></div><div class="row">${cancelBtn}<button class="primary">Save</button></div></form>`;
 
+const DELAYS = ['Labour shortage', 'Material shortage', 'Weather', 'Design changes', 'Financial problems', 'Equipment failure', 'Permit delays', 'Other'];
 const taskForm = t => {
   const ms = S.members.filter(m => m.projectId === S.pid);
+  const others = S.tasks.filter(x => x.projectId === S.pid && !x.deleted && x.id !== t?.id);
   return `<h1>${t ? 'Edit task' : 'New task'}</h1><form data-f="task"><input type="hidden" name="id" value="${t?.id || ''}">
-  ${fld('Title', 'title', t?.title, { req: 1 })}${fld('Due date', 'due', t?.due, { type: 'date' })}
+  ${fld('Title', 'title', t?.title, { req: 1 })}${fld('Start date', 'start', t?.start, { type: 'date' })}${fld('Due date', 'due', t?.due, { type: 'date' })}
   ${sel('Construction stage', 'stage', [['', '—'], ...STAGES], t?.stage || '')}${sel('Assigned to', 'assignee', [['', 'Unassigned'], ...ms.map(m => [m.userId, userName(m.userId)])], t?.assignee || '')}
+  ${sel('Linked BOQ item (optional)', 'boqItemId', [['', '—'], ...S.boqitems.filter(i => i.projectId === S.pid && !i.deleted).map(i => [i.id, `${i.code} ${i.description}`])], t?.boqItemId || '')}
   ${sel('Status', 'status', Object.entries(STATUS), t?.status || 'todo')}${fld('If blocked: reason', 'blockReason', t?.blockReason)}
-  ${chk('Safety risk', 'safety', t?.safety)}${chk('Has financial impact', 'cost', t?.cost)}${chk('Later work depends on this', 'blocks', t?.blocks)}
+  ${sel('Delay cause (if delayed or blocked)', 'delayCause', [['', '—'], ...DELAYS], t?.delayCause || '')}
+  ${others.length ? `<label>Depends on (must finish first)</label><div class="deps">${others.map(o => chk(esc(o.title), 'dep', (t?.deps || []).includes(o.id)).replace('name="dep"', `name="dep" value="${o.id}"`)).join('')}</div>` : ''}
+  ${chk('Safety risk', 'safety', t?.safety)}${chk('Has financial impact', 'cost', t?.cost)}${chk('Later work depends on this', 'blocks', t?.blocks)}${chk('Needs approval before it counts as done', 'needsApproval', t?.needsApproval)}
   ${sel('Priority', 'manualPriority', [['auto', 'Automatic'], 'Critical', 'High', 'Medium', 'Low'], t?.manualPriority || 'auto')}
   <div class="err"></div><div class="row">${cancelBtn}<button class="primary">Save</button></div></form>`;
 };
@@ -410,12 +429,16 @@ const F = {
     if (!old) await save('members', { projectId: p.id, userId: S.user.id, role: 'owner' }, `Owner added to ${p.name}`);
     S.pid = p.id; localStorage.setItem('proj', p.id);
   },
-  async task(d) {
+  async task(d, form) {
     if (!can('tasks', 'e')) throw new Error('Your role cannot edit tasks.');
     if (!d.title.trim()) throw new Error('Title is required.');
     const old = d.id ? S.tasks.find(t => t.id === d.id) : null;
     if (d.status === 'blocked' && !d.blockReason.trim()) throw new Error('Say why the task is blocked.');
-    const rec = { ...(old || {}), id: d.id || undefined, projectId: S.pid, title: d.title.trim(), due: d.due, stage: d.stage, assignee: d.assignee, status: d.status, blockReason: d.status === 'blocked' ? d.blockReason.trim() : '', safety: !!d.safety, cost: !!d.cost, blocks: !!d.blocks, manualPriority: d.manualPriority };
+    if (d.start && d.due && d.start > d.due) throw new Error('Start date is after the due date.');
+    if (d.status === 'done' && d.needsApproval && old?.status !== 'done') throw new Error('This task needs approval. Save it, then use Submit for approval.');
+    const deps = form ? new FormData(form).getAll('dep') : (old?.deps || []);
+    if (d.id) { const seen = new Set(); const reach = id => { if (seen.has(id)) return false; seen.add(id); if (id === d.id) return true; return (S.tasks.find(x => x.id === id)?.deps || []).some(reach); }; if (deps.some(reach)) throw new Error('Those dependencies would make a loop. Remove one.'); }
+    const rec = { ...(old || {}), id: d.id || undefined, projectId: S.pid, title: d.title.trim(), start: d.start, due: d.due, stage: d.stage, assignee: d.assignee, boqItemId: d.boqItemId, status: d.status, blockReason: d.status === 'blocked' ? d.blockReason.trim() : '', delayCause: d.delayCause, deps, safety: !!d.safety, cost: !!d.cost, blocks: !!d.blocks, needsApproval: !!d.needsApproval, manualPriority: d.manualPriority };
     if (d.status === 'done' && !old?.doneDate) { rec.doneDate = todayStr(); rec.doneBy = S.user.id; }
     if (d.status !== 'done') { rec.doneDate = null; rec.doneBy = null; }
     await save('tasks', rec, `${old ? 'Edited' : 'Created'} task ${rec.title}`);
@@ -453,7 +476,7 @@ const A = {
   switch: id => { S.pid = id; localStorage.setItem('proj', id); location.hash = '#/dashboard'; },
   'new-task': () => openSheet(taskForm()),
   'edit-task': id => openSheet(taskForm(S.tasks.find(t => t.id === id))),
-  async 'done-task'(id) { const t = S.tasks.find(x => x.id === id); await save('tasks', { ...t, status: 'done', doneDate: todayStr(), doneBy: S.user.id }, `Completed task ${t.title}`); await render(); },
+  async 'done-task'(id) { const t = S.tasks.find(x => x.id === id); if (t.needsApproval) throw new Error('This task needs approval. Use Submit for approval.'); await save('tasks', { ...t, status: 'done', doneDate: todayStr(), doneBy: S.user.id }, `Completed task ${t.title}`); await render(); },
   async 'reopen-task'(id) { const t = S.tasks.find(x => x.id === id); await save('tasks', { ...t, status: 'todo', doneDate: null, doneBy: null }, `Reopened task ${t.title}`); await render(); },
   'add-member': () => openSheet(memberForm()),
   async 'remove-member'(id) {
@@ -461,6 +484,7 @@ const A = {
     const m = S.members.find(x => x.id === id); if (m.role === 'owner') return;
     await save('members', { ...m, deleted: true }, `Removed ${userName(m.userId)} from project`); await render();
   },
+  async install() { const p = window.__installPrompt; if (!p) throw new Error('Use the Chrome menu: Install app.'); p.prompt(); await p.userChoice; window.__installPrompt = null; await render(); },
   signout: () => { localStorage.removeItem('session'); S.user = null; authView('login'); }
 };
 
@@ -491,6 +515,7 @@ document.addEventListener('change', async e => {
     t.value = '';
   }
 });
+window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); window.__installPrompt = e; });
 window.addEventListener('hashchange', () => S.user && render());
 window.addEventListener('online', () => S.user && renderShell());
 window.addEventListener('offline', () => S.user && renderShell());
@@ -505,7 +530,8 @@ async function render() {
   await renderShell();
   const [a, b] = (location.hash.replace(/^#\//, '') || 'dashboard').split('/');
   let html;
-  if (a === 'dashboard') html = viewDashboard();
+  if (ROUTES[a]) html = await ROUTES[a](b);
+  else if (a === 'dashboard') html = viewDashboard();
   else if (a === 'daily') html = viewDaily();
   else if (a === 'tasks') html = viewTasks();
   else if (a === 'projects') html = viewProjects();
