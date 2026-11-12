@@ -1,0 +1,95 @@
+/* modern.css — layout switch, desktop sidebar, interactive and accessible UI. Loaded after styles.css. */
+:root{--ease:cubic-bezier(.2,.8,.2,1)}
+body{background:radial-gradient(900px 420px at 90% -8%,color-mix(in srgb,var(--brand) 10%,transparent),transparent),radial-gradient(700px 380px at -10% 0,color-mix(in srgb,var(--accent) 7%,transparent),transparent),var(--bg)}
+
+/* top bar */
+#top{transition:box-shadow .2s}
+#top.scrolled{box-shadow:0 1px 0 var(--line),0 10px 28px rgba(0,0,0,.07)}
+#top .badge{margin-left:auto}
+.iconbtn{width:44px;height:44px;min-height:44px;padding:0;border-radius:14px;display:grid;place-items:center;flex:none;background:var(--surface);box-shadow:var(--shadow);border-color:transparent;color:var(--text)}
+.iconbtn svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+
+/* interaction */
+.card,.kpi,.menu a,.tabs a,#bottom a{transition:transform .2s var(--ease),box-shadow .2s,border-color .2s,background .2s,color .2s}
+.menu a span{transition:transform .25s var(--ease)}
+@media(hover:hover){
+  a.card:hover,.menu a:hover,.kpi:hover{transform:translateY(-2px);border-color:color-mix(in srgb,var(--brand) 45%,var(--line));box-shadow:var(--shadow-lg,var(--shadow))}
+  .menu a:hover span{transform:scale(1.1) rotate(-4deg)}
+  button:hover:not(:disabled){border-color:color-mix(in srgb,var(--brand) 50%,var(--line))}
+  button.primary:hover:not(:disabled){filter:brightness(1.07)}
+  .tabs a:hover{color:var(--text);background:var(--surface2)}
+}
+#bottom a svg{transition:transform .2s var(--ease)}
+#bottom a.on svg{transform:translateY(-1px) scale(1.1)}
+.menu a,.grid>*{animation:rise .38s var(--ease) both}
+.menu a:nth-child(2),.grid>*:nth-child(2){animation-delay:.03s}.menu a:nth-child(3),.grid>*:nth-child(3){animation-delay:.06s}
+.menu a:nth-child(4),.grid>*:nth-child(4){animation-delay:.09s}.menu a:nth-child(5){animation-delay:.12s}.menu a:nth-child(6){animation-delay:.15s}
+.menu a:nth-child(7){animation-delay:.18s}.menu a:nth-child(8){animation-delay:.21s}.menu a:nth-child(n+9){animation-delay:.24s}
+:focus-visible{outline:3px solid var(--brand);outline-offset:2px;border-radius:12px}
+.skip{position:fixed;left:12px;top:-70px;z-index:60;background:var(--brand);color:var(--brand-ink);border:0;border-radius:12px;padding:10px 16px;transition:top .15s}
+.skip:focus{top:12px}
+#main:focus{outline:none}
+
+/* quick add */
+#fab{position:fixed;right:16px;bottom:calc(max(12px,env(safe-area-inset-bottom)) + 84px);z-index:6;display:flex;flex-direction:column;align-items:flex-end;gap:10px}
+#fab:empty{display:none}
+.fab-btn{width:56px;height:56px;min-height:56px;padding:0;border-radius:50%;display:grid;place-items:center;background:linear-gradient(135deg,var(--brand),var(--brand2));color:var(--brand-ink);border:0;box-shadow:0 8px 24px color-mix(in srgb,var(--brand) 45%,transparent)}
+.fab-btn svg{width:26px;height:26px;stroke:currentColor;fill:none;stroke-width:2.4;stroke-linecap:round;transition:transform .25s var(--ease)}
+#fab.open .fab-btn svg{transform:rotate(135deg)}
+.fab-menu{display:flex;flex-direction:column;gap:8px;align-items:flex-end}
+.fab-menu[hidden]{display:none}
+.fab-item{display:flex;align-items:center;gap:10px;padding:10px 16px;border-radius:999px;box-shadow:var(--shadow-lg,var(--shadow));animation:rise .2s var(--ease) both}
+.fab-item span{font-size:calc(18px*var(--fs))}
+#toast{bottom:calc(max(12px,env(safe-area-inset-bottom)) + 150px)}
+
+/* sidebar: hidden on mobile */
+#side{display:none}
+
+/* ---------- DESKTOP VIEW ---------- */
+html[data-layout=desktop]{--sw:264px}
+html[data-layout=desktop][data-side=collapsed]{--sw:78px}
+html[data-layout=desktop] #app{display:grid;grid-template-columns:var(--sw) minmax(0,1fr);grid-template-rows:auto 1fr;min-height:100vh;transition:grid-template-columns .25s var(--ease)}
+html[data-layout=desktop] #side{display:flex;flex-direction:column;grid-column:1;grid-row:1/3;position:sticky;top:0;height:100vh;overflow:auto;padding:16px 12px;background:var(--surface);border-right:1px solid var(--line)}
+html[data-layout=desktop] #top{grid-column:2;grid-row:1;padding:14px 28px}
+html[data-layout=desktop] #top .brand{display:none}
+html[data-layout=desktop] #top .dd{max-width:420px}
+html[data-layout=desktop] main{grid-column:2;grid-row:2;max-width:1160px;margin:0 auto;padding:6px 28px 72px}
+html[data-layout=desktop] #bottom{display:none}
+html[data-layout=desktop] #fab{bottom:28px;right:28px}
+html[data-layout=desktop] #toast{bottom:28px}
+html[data-layout=desktop] .grid{grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}
+html[data-layout=desktop] .menu{grid-template-columns:repeat(auto-fill,minmax(220px,1fr))}
+html[data-layout=desktop] h1{font-size:calc(30px*var(--fs))}
+.side-brand{display:flex;align-items:center;gap:10px;padding:6px 8px 16px;font-size:calc(18px*var(--fs))}
+.side-brand .logo{width:38px;height:38px;border-radius:12px;background:linear-gradient(135deg,var(--brand),var(--brand2));display:grid;place-items:center;flex:none;font-size:20px}
+.side-nav{display:flex;flex-direction:column;gap:2px;flex:1}
+.side-nav a{display:flex;align-items:center;gap:12px;padding:9px 10px;border-radius:14px;font-weight:600;font-size:calc(14px*var(--fs));color:var(--muted);position:relative;transition:background .15s,color .15s}
+.side-nav a .si{width:34px;height:34px;border-radius:11px;background:var(--surface2);display:grid;place-items:center;font-size:calc(17px*var(--fs));flex:none}
+.side-nav a:hover{background:var(--surface2);color:var(--text)}
+.side-nav a.on{background:var(--brand-soft);color:var(--brand)}
+.side-nav a.on:before{content:"";position:absolute;left:-12px;top:10px;bottom:10px;width:4px;border-radius:0 4px 4px 0;background:var(--brand)}
+.side-nav a.on .si{background:var(--surface)}
+.side-toggle{margin-top:12px;display:flex;align-items:center;gap:10px;justify-content:flex-start;border-radius:14px;color:var(--muted);background:transparent}
+.side-toggle svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+html[data-side=collapsed] .sl{display:none}
+html[data-side=collapsed] .side-nav a,html[data-side=collapsed] .side-toggle,html[data-side=collapsed] .side-brand{justify-content:center}
+html[data-side=collapsed] .side-nav a.on:before{left:-12px}
+
+/* ---------- MOBILE VIEW forced on a wide screen: centred phone-width column ---------- */
+@media(min-width:700px){
+  html[data-viewmode=mobile] body{background:color-mix(in srgb,var(--bg) 88%,#000)}
+  html[data-viewmode=mobile] #app{max-width:480px;margin:0 auto;background:var(--bg);box-shadow:0 0 0 1px var(--line),0 20px 60px rgba(0,0,0,.12)}
+  html[data-viewmode=mobile] #bottom{max-width:456px}
+  html[data-viewmode=mobile] #fab{right:calc(50% - 224px)}
+}
+
+/* ---------- accessibility options ---------- */
+html[data-contrast=high]{--text:#000;--muted:#26332c;--line:#6f7f76;--bg:#fff;--surface:#fff;--surface2:#f1f4f2;--brand:#064a2c;--brand2:#0a6b40;--brand-soft:#d6ecde}
+html[data-theme=dark][data-contrast=high]{--text:#fff;--muted:#e3ebe6;--line:#9bb0a4;--bg:#000;--surface:#0c120f;--surface2:#161e1a;--brand:#5ff0a0;--brand2:#3ddc84;--brand-soft:#0f2a1c}
+@media(prefers-color-scheme:dark){html[data-contrast=high]:not([data-theme=light]){--text:#fff;--muted:#e3ebe6;--line:#9bb0a4;--bg:#000;--surface:#0c120f;--surface2:#161e1a;--brand:#5ff0a0;--brand2:#3ddc84;--brand-soft:#0f2a1c}}
+html[data-contrast=high] .card,html[data-contrast=high] .kpi,html[data-contrast=high] button,html[data-contrast=high] input,html[data-contrast=high] .menu a{border-width:2px}
+html[data-contrast=high] a:not(.card):not(.btn):not(#bottom a):not(.menu a):not(.side-nav a):not(.tabs a){text-decoration:underline}
+html[data-motion=reduce] *,html[data-motion=reduce] *:before,html[data-motion=reduce] *:after{animation:none!important;transition:none!important;scroll-behavior:auto!important}
+html[data-targets=large] button,html[data-targets=large] a.btn,html[data-targets=large] #bottom a,html[data-targets=large] .tabs a,html[data-targets=large] input,html[data-targets=large] .dd-btn{min-height:58px}
+html[data-targets=large] button.sm{min-height:48px}
+html[data-targets=large] .side-nav a{padding:13px 10px}

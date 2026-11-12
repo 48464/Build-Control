@@ -28,3 +28,9 @@ Upload ALL files again (new: ops.js).
 
 ## Guide
 In-app help (new: guide.js). Menu → "How to use EthioBuild" shows the 16 steps in order, with what each module does, steps and a worked example. Every module page also has a collapsible "How to use this page" card. Upload ALL files again (new: guide.js; changed: index.html, sw.js, app.js, styles.css, README.md).
+
+## General settings
+Settings → Appearance & language: theme, font style, text size, language (English, አማርኛ, Afaan Oromoo). New: i18n.js (dictionaries; add translations there), prefs.js. Changed: app.js, styles.css, ops.js, prices.js, guide.js, index.html, sw.js, README.md. Upload ALL files again.
+
+## View modes and UI
+Top-bar screen icon: one tap switches mobile/desktop view (Settings → Layout: Auto, Mobile, Desktop). Desktop view has a collapsible sidebar. Quick-add (+) button, high-contrast, reduce-motion and larger-tap-target options. New: view.js, modern.css. Changed: prefs.js, i18n.js, guide.js, index.html, sw.js. Upload ALL files again.

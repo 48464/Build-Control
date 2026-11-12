@@ -134,10 +134,10 @@
     },
     settings: {
       ord: 0, ph: -1, short: 'Theme, account, activity log.',
-      what: 'Your account, light or dark theme, and the audit log of recent changes.',
-      steps: ['Open Settings from the menu.', 'Choose Match device, Light or Dark.', 'Review the activity log to see who changed what.'],
-      ex: 'The log shows “Update · expenses · Roofing sheets delivered” with user and time.',
-      tip: 'Sign out on shared phones.'
+      what: 'Your account, appearance (theme, font style, text size), language, mobile or desktop layout, accessibility options and the audit log of recent changes.',
+      steps: ['Open Settings from the menu.', 'Under Appearance & language choose the theme, font style, text size and language. Changes apply at once.', 'Review the activity log to see who changed what.'],
+      ex: 'Text size Large with the Easy reading font makes the app easier to read outdoors. Language አማርኛ shows menus and buttons in Amharic.',
+      tip: 'Tap the screen icon in the top bar to switch between mobile and desktop view. Sign out on shared phones.'
     }
   };
   const ORDER = Object.keys(G).filter(k => G[k].ord > 0).sort((a, b) => G[a].ord - G[b].ord);
