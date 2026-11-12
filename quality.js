@@ -1,7 +1,8 @@
 'use strict';
 /* Phase 6 — Quality & Safety, compliance register, alerts, analytics, design-revision impact.
-   NO Ethiopian law, standard or code text is built in. The compliance register holds only what the user types from official
-   sources, with who confirmed it and when. Anything not confirmed is flagged for professional review. */
+   No article text, fees or deadlines of any law or code are built in. compguide.js holds a short orientation guide with confidence labels.
+   The compliance register holds only what the user types from official sources, with who confirmed it and when.
+   Anything not confirmed is flagged for professional review. */
 
 const INSP_RES = { pending: 'In progress', passed: 'Passed', failed: 'Failed' };
 const CHK = { pending: 'Not checked', pass: 'Pass', fail: 'Fail', na: 'N/A' };
@@ -10,6 +11,7 @@ const SEVER = ['Low', 'Medium', 'High', 'Critical'];
 const COMP_ST = { not_checked: 'Not checked', in_progress: 'In progress', compliant: 'Compliant', non_compliant: 'Not compliant', na: 'Not applicable' };
 // Topic NAMES only (not requirements). The user decides what applies and enters the real requirement from the official source.
 const COMP_TOPICS = ['Building permit', 'Approved design drawings', 'Structural design review', 'Inspections required by the authority', 'Completion or occupancy approval', 'Environmental requirements', 'Occupational safety requirements', 'Utility connection approvals', 'Contractor and professional licences', 'Land holding / lease documents'];
+const COMP_LIST = () => window.COMP_CHECKLIST || COMP_TOPICS.map(t => ({ t }));
 const pInsp = () => P(S.inspections), pInc = () => P(S.incidents), pComp = () => P(S.compitems);
 const inspResult = i => { const c = i.checks || []; if (c.some(x => x.r === 'fail')) return 'failed'; if (!c.length || c.some(x => x.r === 'pending')) return 'pending'; return 'passed'; };
 const stageName = k => k ? `${k} · ${BOQ_SECTIONS.find(s => s[0] === k)?.[1] || ''}` : '';
@@ -76,10 +78,10 @@ let compFilter = '';
 function viewCompliance() {
   const g = gate('compliance'); if (g) return g; const e = can('compliance', 'e'); const L = pComp().filter(c => !compFilter || c.status === compFilter).sort((a, b) => (a.title || '').localeCompare(b.title));
   const all = pComp(); const n = k => all.filter(c => c.status === k).length;
-  return `<div class="row"><h1>Compliance register</h1>${e ? `<button class="primary" data-a="new-comp">+ Add</button>` : ''}</div>
-  <div class="card small"><b>Read first.</b> This app contains no Ethiopian laws, standards or building codes and does not tell you what applies. Enter each requirement yourself from the official source (the permit office, the published regulation, your engineer), and record who confirmed it and when. Items without a typed reference and a confirmation are flagged <b class="err">Unverified</b> and need review by a licensed professional.</div>
+  return `<div class="row"><h1>Compliance register</h1><span class="row" style="gap:8px"><a class="btn sm" href="#/compguide">📖 Compliance guide</a>${e ? `<button class="primary" data-a="new-comp">+ Add</button>` : ''}</span></div>
+  <div class="card small"><b>Read first.</b> The <a href="#/compguide"><u>Compliance guide</u></a> summarises the legal framework and the usual order of steps, with a label showing how sure each statement is. It is not the law and not legal advice. The app does not tell you what applies to your plot. Enter each requirement from the official source (the permit office, the published regulation, your engineer), and record who confirmed it and when. Items without a typed reference and a confirmation are flagged <b class="err">Unverified</b> and need review by a licensed professional.</div>
   <div class="grid"><div class="kpi"><span class="muted small">Compliant</span><b>${n('compliant')}</b></div><div class="kpi"><span class="muted small">Not compliant</span><b>${n('non_compliant')}</b></div><div class="kpi"><span class="muted small">Unverified</span><b>${all.filter(compUnverified).length}</b></div></div>
-  ${e && !all.length ? `<div class="card"><b>Start with topic names</b><p class="small muted">Adds blank topics to check. They are headings only, not requirements. Remove any that do not apply.</p><button class="sm" data-a="comp-topics">Add suggested topic names</button></div>` : ''}
+  ${e ? (() => { const miss = COMP_LIST().filter(x => !all.some(c => c.title === x.t)).length; return miss ? `<div class="card"><b>Compliance checklist</b><p class="small muted">Adds ${miss} checklist item(s) from the guide as blank records to fill in. They are headings only, not requirements. Remove any that do not apply.</p><button class="sm" data-a="comp-topics">Add the checklist</button></div>` : ''; })() : ''}
   <label>Filter<select id="compf"><option value="">All</option>${Object.entries(COMP_ST).map(([k, l]) => `<option value="${k}" ${compFilter === k ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
   ${L.map(c => { const ex = compExpiry(c); return `<div class="card"><div class="row"><b>${esc(c.title)}</b><span class="badge ${c.status === 'compliant' ? 'Completed' : c.status === 'non_compliant' ? 'High' : 'Medium'}">${COMP_ST[c.status]}</span></div>
   <div class="small muted">${c.authority ? 'Authority: ' + esc(c.authority) + '<br>' : ''}${c.reference ? 'Source / reference: ' + esc(c.reference) : '<span class="err">No source or reference typed.</span>'}${c.sourceUrl ? ` · <a href="${esc(c.sourceUrl)}" target="_blank" rel="noopener">link</a>` : ''}
@@ -102,7 +104,7 @@ F.compitem = async (d, form) => {
 Object.assign(A, {
   'new-comp': () => openSheet(regForm()), 'edit-comp': id => openSheet(regForm(S.compitems.find(x => x.id === id))),
   async 'del-comp'(id) { if (!can('compliance', 'e')) throw new Error('No access.'); const c = S.compitems.find(x => x.id === id); if (!confirm(`Remove “${c.title}”? Recorded in the activity log.`)) return; await save('compitems', { ...c, deleted: true }, `Removed compliance item ${c.title}`); await render(); },
-  async 'comp-topics'() { if (!can('compliance', 'e')) throw new Error('No access.'); for (const t of COMP_TOPICS) await save('compitems', { projectId: S.pid, title: t, authority: '', reference: '', sourceUrl: '', status: 'not_checked', confirmedBy: '', confirmedOn: '', expires: '', note: 'Topic name only. Enter the real requirement and its source.' }, `Added topic ${t}`); await render(); }
+  async 'comp-topics'() { if (!can('compliance', 'e')) throw new Error('No access.'); const have = pComp().map(c => c.title); let n = 0; for (const x of COMP_LIST()) { if (have.includes(x.t)) continue; n++; await save('compitems', { projectId: S.pid, title: x.t, authority: '', reference: '', sourceUrl: '', status: 'not_checked', confirmedBy: '', confirmedOn: '', expires: '', note: x.step ? `Checklist item, guide step ${x.step}. Enter the real requirement, its source and who confirmed it.` : 'Topic name only. Enter the real requirement and its source.' }, `Added checklist item ${x.t}`); } toast(n + ' item(s) added'); await render(); }
 });
 document.addEventListener('change', async e => { if (e.target.id === 'compf') { compFilter = e.target.value; await render(); } });
 

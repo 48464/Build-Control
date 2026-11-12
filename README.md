@@ -34,3 +34,6 @@ Settings → Appearance & language: theme, font style, text size, language (Engl
 
 ## View modes and UI
 Top-bar screen icon: one tap switches mobile/desktop view (Settings → Layout: Auto, Mobile, Desktop). Desktop view has a collapsible sidebar. Quick-add (+) button, high-contrast, reduce-motion and larger-tap-target options. New: view.js, modern.css. Changed: prefs.js, i18n.js, guide.js, index.html, sw.js. Upload ALL files again.
+
+## Compliance guide
+Compliance register now has a 📖 Compliance guide (#/compguide) and an 'Add the checklist' button (16 items in order). New: compguide.js. Changed: quality.js, modern.css, guide.js, i18n.js, view.js, app.js, index.html, sw.js. Upload ALL files again. Confirm every item with your permit office; the guide is orientation only.

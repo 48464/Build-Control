@@ -28,9 +28,9 @@
       tip: 'Measurements read from a scaled drawing are marked uncertain. Prefer written dimensions.'
     },
     compliance: {
-      ord: 3, ph: 0, short: 'Track permits, approvals and legal requirements.',
+      ord: 3, ph: 0, short: 'Track permits and approvals, with a guide and checklist.',
       what: 'A register of what the authorities and professionals must approve. An item counts as verified only when someone confirms it with a reference number and date. The app does not state what the regulations are; you record what the authority told you.',
-      steps: ['Tap + Add and pick or type a requirement (building permit, approved design drawings, utility connection approvals…).', 'Write the authority that issues it and the current status (Not checked, In progress, Compliant, Not compliant, Not applicable).', 'When you receive the approval, fill in who confirmed it, the date, the reference number and the expiry date if any.', 'Review the list regularly. Items without confirmation, and approvals nearing expiry, appear in Alerts.'],
+      steps: ['Read the Compliance guide (button at the top) for the legal framework and the order of steps, then tap Add the checklist to create the 16 items. Or tap + Add and pick or type a requirement (building permit, approved design drawings, utility connection approvals…).', 'Write the authority that issues it and the current status (Not checked, In progress, Compliant, Not compliant, Not applicable).', 'When you receive the approval, fill in who confirmed it, the date, the reference number and the expiry date if any.', 'Review the list regularly. Items without confirmation, and approvals nearing expiry, appear in Alerts.'],
       ex: 'Requirement: “Building permit” · Authority: city construction office · Status: Compliant · Reference: (number on the permit) · Confirmed by: you, on the date you collected it.',
       tip: 'Start the permit early: approvals often take longer than anything else.'
     },

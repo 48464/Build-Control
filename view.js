@@ -46,7 +46,7 @@
   }
 
   // ----- desktop sidebar -----
-  const ALIAS = { drawing: 'drawings', material: 'suppliers', rate: 'cost', progitem: 'progress', inspection: 'quality', doc: 'files' };
+  const ALIAS = { drawing: 'drawings', material: 'suppliers', rate: 'cost', progitem: 'progress', inspection: 'quality', doc: 'files', compguide: 'compliance' };
   function currentKey() {
     const parts = (location.hash || '#/dashboard').replace(/^#\//, '').split('/');
     let k = parts[0] || 'dashboard'; if (k === 's') return parts[1] || '';

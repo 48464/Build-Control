@@ -93,3 +93,12 @@ html[data-motion=reduce] *,html[data-motion=reduce] *:before,html[data-motion=re
 html[data-targets=large] button,html[data-targets=large] a.btn,html[data-targets=large] #bottom a,html[data-targets=large] .tabs a,html[data-targets=large] input,html[data-targets=large] .dd-btn{min-height:58px}
 html[data-targets=large] button.sm{min-height:48px}
 html[data-targets=large] .side-nav a{padding:13px 10px}
+
+/* compliance guide */
+.ctag{display:inline-block;font-size:calc(10.5px*var(--fs));font-weight:700;padding:2px 8px;border-radius:999px;margin-left:4px;vertical-align:middle;white-space:nowrap}
+.ctag.ok{background:var(--brand-soft);color:var(--brand)}
+.ctag.v{background:color-mix(in srgb,var(--accent) 24%,var(--surface));color:var(--text)}
+details.card>summary{cursor:pointer;list-style:none;display:flex;justify-content:space-between;align-items:center;gap:10px}
+details.card>summary::-webkit-details-marker{display:none}
+details.card>summary:after{content:"+";font-weight:700;font-size:calc(20px*var(--fs));color:var(--brand);line-height:1;transition:transform .2s}
+details.card[open]>summary:after{transform:rotate(45deg)}
