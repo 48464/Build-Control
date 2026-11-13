@@ -2,6 +2,7 @@
 /* prefs.js — general settings: theme, font style, text size, language.
    Stored on this device (localStorage). Language uses the dictionaries in i18n.js and translates the screen as it is drawn. */
 (function () {
+  const BUILD = '14 (13 Nov 2026)';
   const FONTS = {
     system: ['System default', 'Inter,system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans Ethiopic",sans-serif'],
     sans: ['Classic sans-serif', 'Arial,Helvetica,"Noto Sans Ethiopic",sans-serif'],
@@ -64,6 +65,17 @@
   }
 
   // ----- settings card (used by Settings page) -----
+  async function refreshApp() {
+    // Replaces the app's downloaded files only. Projects, quantities, prices and settings (IndexedDB / localStorage) are NOT touched.
+    try { if (navigator.serviceWorker) { const rs = await navigator.serviceWorker.getRegistrations(); await Promise.all(rs.map(r => r.unregister())); } if (window.caches) { const ks = await caches.keys(); await Promise.all(ks.filter(k => k.indexOf('ethcm-') === 0).map(k => caches.delete(k))); } } catch (e) { }
+    location.reload();
+  }
+  const healthy = () => { try { return typeof A['new-comp'] === 'function' && typeof A['new-compl'] === 'function' && A['new-comp'] !== A['new-compl']; } catch (e) { return false; } };
+  function buildCard() {
+    const ok = healthy();
+    return `<h2 style="margin:14px 0 6px">App version</h2><div class="small">Build <b>${BUILD}</b><br>BOQ component and compliance buttons: ${ok ? '<b>separate, OK</b>' : '<b class="err">old files loaded. Tap Update app now.</b>'}</div>
+    <div style="margin-top:8px"><button type="button" data-prefs="refresh">Update app now</button></div><div class="muted small">Reloads the app files only. Your projects and data are not deleted.</div>`;
+  }
   const opt = (v, label, cur) => `<option value="${v}" ${v === cur ? 'selected' : ''}>${label}</option>`;
   window.prefsCard = function () {
     const theme = get('theme', 'auto');
@@ -75,7 +87,7 @@
     ${typeof viewPrefsHtml === 'function' ? viewPrefsHtml() : ''}
     <div id="pref-sample" class="gex" data-notr style="font-family:var(--ff);margin:8px 0">Foundation concrete poured today · 12.5 m² · 45,000 ETB<br>ሰላም ኢትዮጵያ · ፋውንዴሽን ኮንክሪት</div>
     <div class="muted small">Translation covers menus, buttons, statuses and the guide titles. Other text stays in English for now. Currency is ETB; units are metric.</div>
-    <div style="margin-top:8px"><button type="button" data-prefs="reset">Reset to defaults</button></div></div>`;
+    <div style="margin-top:8px"><button type="button" data-prefs="reset">Reset to defaults</button></div>${buildCard()}</div>`;
   };
 
   document.addEventListener('change', e => {
@@ -85,6 +97,7 @@
     else if (id === 'pref-lang') { lang = LANGS[e.target.value] ? e.target.value : 'en'; put('lang', lang); refresh(); }
   });
   document.addEventListener('click', e => {
+    const rf = e.target.closest && e.target.closest('[data-prefs="refresh"]'); if (rf) { if (confirm('Reload the app files? Your projects and data are not deleted.')) refreshApp(); return; }
     const b = e.target.closest && e.target.closest('[data-prefs="reset"]'); if (!b) return;
     font = 'system'; size = 'm'; lang = 'en'; put('fontStyle', font); put('fontSize', size); put('lang', lang); put('theme', 'auto');
     if (typeof applyTheme === 'function') applyTheme();
@@ -92,6 +105,8 @@
     refresh();
   });
 
+  // Self-heal once if an old file (for example quality.js) is mixed with new ones: reload the app files, keep all data.
+  try { if (!healthy() && !sessionStorage.getItem('ethHealed')) { sessionStorage.setItem('ethHealed', '1'); setTimeout(refreshApp, 300); } } catch (e) { }
   applyLook(); start();
   if (lang !== 'en') window.addEventListener('load', () => document.body && walk(document.body));
 })();

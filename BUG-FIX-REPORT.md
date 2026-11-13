@@ -22,7 +22,7 @@ quality.js: the compliance actions are renamed so they no longer collide.
 
 prices.js: the component form already had type, price source, coefficient, waste, manual unit price and unit. Added the missing optional **Notes** field (`note`, saved in `F.comp`, shown on the rate page) and clearer coefficient label. Old saved components have no `note` and load as before.
 
-sw.js: cache version `ethcm-shell-v12` to `ethcm-shell-v13` so phones fetch the corrected files.
+sw.js: cache version `ethcm-shell-v12` to `ethcm-shell-v13` (then v14, see section 8) so phones fetch the corrected files.
 
 Calculation engine NOT changed: effective quantity = coefficient x (1 + waste%), cost = effective quantity x unit price, direct = sum, then overhead, profit, contingency and tax once, in the existing order, then x net BOQ quantity. Waste is applied once.
 
@@ -62,3 +62,17 @@ The fix changes code only. It does not touch IndexedDB or localStorage, does not
 1. In GitHub open the repository History, pick the commit before this update and choose Revert (or re-upload the previous files).
 2. Reload the app twice on the phone. Saved data is not affected either way: components saved with a Notes field keep working, and the old version simply ignores that field.
 3. If anything looks wrong, restore the backup file you exported in Menu, Backup (restore never overwrites newer local records).
+
+## 8. Follow-up: fix was deployed but the phone still showed the old form
+Checked the GitHub repository directly: it already contained the corrected `quality.js` (`new-compl`), `prices.js` and `sw.js` v13, and all 35 acceptance tests pass on those exact files. So the code was right and the phone was running an old downloaded copy of the app files (GitHub Pages lets browsers reuse files for about 10 minutes, and the old service worker fetched files through that cache).
+
+Release v14 makes this impossible to repeat:
+- `index.html` loads every script and stylesheet with `?v=14`, so a new release is a new URL and cannot be served from an old cache.
+- `sw.js` (cache v14) asks the server to revalidate every file (`cache: 'no-cache'`) and only uses its saved copy when you are offline. The app registers it with `updateViaCache: 'none'` and checks for updates at every start.
+- Settings, Appearance & language, now shows **Build 14** and whether the BOQ component and compliance buttons are separate ("OK") or "old files loaded".
+- **Update app now** button: removes the app's downloaded files and the old service worker, then reloads. It does not touch IndexedDB or localStorage, so projects, quantities, prices and settings stay.
+- The app does the same once automatically if it detects old and new files mixed together.
+
+Safe manual refresh (only if you cannot reach Settings): Chrome, Settings, Privacy, Clear browsing data, choose ONLY "Cached images and files". Do NOT tick "Cookies and site data" and do NOT use "Clear storage" or "Reset" in Site settings: that would delete your saved projects.
+
+Tests on v14: 37 of 37 pass, including a simulated stale-file case (new files plus the old quality.js): Settings warns "old files loaded" and the self-heal triggers.

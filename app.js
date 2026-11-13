@@ -557,7 +557,7 @@ async function init() {
   db = await openDB();
   const sid = localStorage.getItem('session');
   if (sid) S.user = (await dbGet('users', sid)) || null;
-  if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => { });
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then(r => r.update()).catch(() => { });
   await render();
 }
 window.addEventListener('load', init); // after boq.js has registered its routes
