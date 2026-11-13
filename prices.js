@@ -209,7 +209,7 @@ function viewRate(id) {
   <div class="card small">Quantity (net): <b>${c.ok ? fmt(c.net) + ' ' + esc(it.unit) : 'not available'}</b>${c.ok ? '' : '<br><span class="err">' + esc(c.issues[0] || '') + '</span>'}<br>Rates per 1 ${esc(it.unit)} of this item. Method: <b>${METHODS[st.method]}</b>. <a href="#/boqitem/${id}"><u>View quantity calculation</u></a></div>
   <div class="row"><h2>Components</h2>${e ? `<button class="sm primary" data-a="new-comp" data-id="${id}">+ Component</button>` : ''}</div>
   ${u.lines.map((l, i) => `<div class="card"><div class="row"><b>${esc(l.c.name)}</b><span class="chip Low">${COMP_TYPES.find(t => t[0] === l.c.type)?.[1]}</span></div>
-    <div class="small">${fmt(l.effQ)} ${esc(l.unit)}${Number(l.c.wastePct) ? ` (incl. ${l.c.wastePct}% waste)` : ''} × ${l.rate != null ? money(l.rate) : '—'} = <b>${l.cost != null ? money(l.cost) : '—'} ETB</b></div><div class="muted small">${esc(l.basis || '')}</div>
+    <div class="small">${fmt(l.effQ)} ${esc(l.unit)}${Number(l.c.wastePct) ? ` (incl. ${l.c.wastePct}% waste)` : ''} × ${l.rate != null ? money(l.rate) : '—'} = <b>${l.cost != null ? money(l.cost) : '—'} ETB</b></div><div class="muted small">${esc(l.basis || '')}</div>${l.c.note ? `<div class="small">Note: ${esc(l.c.note)}</div>` : ''}
     ${e ? `<div style="margin-top:8px"><button class="sm" data-a="edit-comp" data-id="${id}" data-i="${i}">Edit</button> <button class="sm danger" data-a="del-comp" data-id="${id}" data-i="${i}">Remove</button></div>` : ''}</div>`).join('') || '<p class="muted small">No components yet. Add the materials, labour, equipment and other costs for one unit of this item. Consumption coefficients are yours to enter: none are assumed, and concrete mixes must follow the approved structural specification.</p>'}
   ${u.issues.length ? `<div class="card"><b style="color:var(--high)">Missing or unusable prices</b><ul class="plain small">${u.issues.map(i => `<li>${esc(i)}</li>`).join('')}</ul></div>` : ''}
   <div class="card"><b>Unit rate build-up (per ${esc(it.unit)})</b>
@@ -240,10 +240,10 @@ const compForm = (itemId, i) => {
   const opts = [['', 'Manual rate (type below)'], ...mats().map(m => ['material:' + m.id, `Material · ${m.name} (per ${m.unit})`]), ...labs().filter(l => l.city === city).map(l => ['labour:' + l.id, `Labour · ${l.category} (${money(l.daily)}/day)`]), ...eqs().filter(q => q.city === city).map(q => ['equipment:' + q.id, `Equipment · ${q.name} (${money(Number(q.hire) + (Number(q.fuel) || 0))}/day)`])];
   return `<h1>${i != null ? 'Edit component' : 'New component'}</h1><form data-f="comp"><input type="hidden" name="itemId" value="${itemId}"><input type="hidden" name="i" value="${i ?? ''}">
   ${fld('Name', 'name', c.name, { req: 1 })}${sel('Type', 'type', COMP_TYPES, c.type || 'material')}${sel('Price source', 'ref', opts, c.refId ? c.type + ':' + c.refId : '')}
-  ${fld('Quantity needed per 1 unit of the BOQ item (your coefficient; days for labour/equipment)', 'qty', c.qty, { type: 'number', req: 1, attrs: 'min="0" step="any" inputmode="decimal"' })}
+  ${fld('Consumption coefficient: quantity needed per 1 unit of the BOQ item (days for labour/equipment)', 'qty', c.qty, { type: 'number', req: 1, attrs: 'min="0" step="any" inputmode="decimal"' })}
   ${fld('Waste % on this component (0 = none)', 'wastePct', c.wastePct ?? 0, { type: 'number', attrs: 'min="0" max="100" step="any" inputmode="decimal"' })}
   ${fld('Manual rate (ETB per unit); required for transport/other, optional override for others', 'manualRate', c.manualRate ?? '', { type: 'number', attrs: 'min="0" step="any" inputmode="decimal"' })}
-  ${fld('Unit label for manual rates (e.g. trip, m³)', 'unit', c.unit)}<div class="err"></div><div class="row">${cancelBtn}<button class="primary">Save</button></div></form>`;
+  ${fld('Unit label for manual rates (e.g. trip, m³)', 'unit', c.unit)}${fld('Notes (optional)', 'note', c.note)}<div class="err"></div><div class="row">${cancelBtn}<button class="primary">Save</button></div></form>`;
 };
 const settingsForm = () => { const s = settings(); return `<h1>Pricing settings</h1><form data-f="pricing">${sel('Pricing method', 'method', Object.entries(METHODS), s.method)}${sel('Supplier (for “Selected supplier”)', 'supplierId', [['', '—'], ...sups().map(x => [x.id, x.name])], s.supplierId || '')}
   <p class="small muted">Set these to your contract and the applicable regulations. They start at 0 and are not pre-filled.</p>
@@ -274,7 +274,7 @@ F.comp = async d => {
   const [kind, refId] = d.ref ? d.ref.split(':') : ['', '']; if (kind && kind !== d.type) throw new Error(`The price source is a ${kind} item but the type is ${d.type}. Make them match.`);
   const manual = reqNum(d.manualRate, 'Manual rate', true); if (!kind && manual == null) throw new Error('Choose a price source or type a manual rate.');
   const qty = reqNum(d.qty, 'Quantity'); const w = reqNum(d.wastePct, 'Waste', true) ?? 0; if (w > 100) throw new Error('Waste must be 0–100%.');
-  const comp = { name: trim(d.name), type: d.type, refId: refId || '', qty, wastePct: w, manualRate: manual == null ? '' : manual, unit: trim(d.unit) };
+  const comp = { name: trim(d.name), type: d.type, refId: refId || '', qty, wastePct: w, manualRate: manual == null ? '' : manual, unit: trim(d.unit), note: trim(d.note) };
   const old = raOf(d.itemId); const comps = [...(old?.components || [])]; if (d.i !== '') comps[Number(d.i)] = comp; else comps.push(comp);
   await save('rates', { ...(old || {}), id: d.itemId, projectId: S.pid, components: comps }, `Updated rate analysis for ${S.boqitems.find(x => x.id === d.itemId)?.code}`);
 };
