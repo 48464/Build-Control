@@ -10,6 +10,7 @@
 
   function labelOf(sel) {
     const lab = sel.closest('label'); if (!lab) return sel.getAttribute('aria-label') || 'Choose';
+    const fl = lab.querySelector(':scope>.fl'); if (fl) return fl.textContent.trim();
     let t = ''; lab.childNodes.forEach(n => { if (n.nodeType === 3) t += n.textContent; }); return t.trim() || sel.getAttribute('aria-label') || 'Choose';
   }
   function sync(sel, btn) {
@@ -54,7 +55,15 @@
   });
   picker.addEventListener('close', () => { current = null; });
 
-  const scan = root => (root.querySelectorAll ? root.querySelectorAll('select:not([data-dd])') : []).forEach(enhance);
-  new MutationObserver(ms => ms.forEach(m => m.addedNodes.forEach(n => { if (n.nodeType === 1) { if (n.matches('select:not([data-dd])')) enhance(n); scan(n); } }))).observe(document.body, { childList: true, subtree: true });
+  // short labels sit on the field's border; long explanatory labels stay above the field
+  function floatLabel(lab) {
+    if (lab.classList.contains('fl-on') || lab.classList.contains('chk') || lab.dataset.nofl) return;
+    const ctl = [...lab.children].find(c => c.matches('input:not([type=checkbox]):not([type=hidden]):not([type=file]),textarea,.dd,select'));
+    const t = [...lab.childNodes].find(n => n.nodeType === 3 && n.textContent.trim());
+    if (!ctl || !t || t.textContent.trim().length > 40) return;
+    const span = document.createElement('span'); span.className = 'fl'; span.textContent = t.textContent.trim(); t.replaceWith(span); lab.classList.add('fl-on');
+  }
+  const scan = root => { if (!root.querySelectorAll) return; root.querySelectorAll('select:not([data-dd])').forEach(enhance); root.querySelectorAll('label:not(.fl-on)').forEach(floatLabel); };
+  new MutationObserver(ms => ms.forEach(m => m.addedNodes.forEach(n => { if (n.nodeType === 1) { if (n.matches('select:not([data-dd])')) enhance(n); scan(n); if (n.matches('label')) floatLabel(n); } }))).observe(document.body, { childList: true, subtree: true });
   scan(document);
 })();

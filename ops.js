@@ -69,7 +69,7 @@ function viewProgress() {
   const wk = Object.entries(o.weeks).sort().slice(-8).reverse();
   const tasksDue = P(S.tasks).filter(t => t.due && t.due <= todayStr()); const tasksDoneOfDue = tasksDue.filter(t => t.status === 'done').length;
   return `<div class="row"><h1>Progress</h1>${e ? `<button class="primary" data-a="new-progress">+ Record work</button>` : ''}</div>
-  <div class="card"><div class="muted small">Overall physical progress</div><div style="font-size:calc(34px*var(--fs,1));font-weight:800;letter-spacing:-1px">${o.pct == null ? 'Not measured' : pct1(o.pct)}</div>${bar(o.pct)}
+  <div class="card"><div class="muted small">Overall physical progress</div><div style="font-size:34px;font-weight:800;letter-spacing:-1px">${o.pct == null ? 'Not measured' : pct1(o.pct)}</div>${bar(o.pct)}
   <div class="small muted" style="margin-top:8px">Method: <b>${o.cfg.method === 'cost' ? 'weighted by estimated cost of each BOQ item' : 'weighted by the weights you set'}</b>. Only verified quantities count. ${o.incl} of ${o.total} BOQ items are included${o.total - o.incl ? ` (items without a ${o.cfg.method === 'cost' ? 'complete price' : 'weight'} or valid quantity are left out, not guessed)` : ''}.</div>
   ${approver() ? `<div style="margin-top:8px"><button class="sm" data-a="prog-settings">Weighting method</button></div>` : ''}</div>
   ${approver() && pend.length ? `<h2>Waiting for verification (${pend.length})</h2>${pend.map(u => updCard(u, true)).join('')}` : ''}

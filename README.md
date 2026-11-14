@@ -1,4 +1,4 @@
-# EthioBuild - Phase 1 + 2
+# EthioBuild - Phases 1 to 7
 
 Offline-first PWA: accounts, roles, projects, team, tasks with transparent priority,
 role-based dashboards, encrypted verified backup/restore, audit log, light/dark theme.
@@ -26,14 +26,19 @@ Upload ALL files again (new: prices.js).
 Daily activities, scheduling (list + Gantt), dependencies, approval workflow, progress from verified quantities, inventory and procurement, labour attendance, daily report.
 Upload ALL files again (new: ops.js).
 
-## Guide
-In-app help (new: guide.js). Menu → "How to use EthioBuild" shows the 16 steps in order, with what each module does, steps and a worked example. Every module page also has a collapsible "How to use this page" card. Upload ALL files again (new: guide.js; changed: index.html, sw.js, app.js, styles.css, README.md).
+## Phase 5
+Finance (expenses, payments, contracts, variations), document archive with versions, reports with Excel/CSV export. New: finance.js, docs.js.
 
-## General settings
-Settings → Appearance & language: theme, font style, text size, language (English, አማርኛ, Afaan Oromoo). New: i18n.js (dictionaries; add translations there), prefs.js. Changed: app.js, styles.css, ops.js, prices.js, guide.js, index.html, sw.js, README.md. Upload ALL files again.
+## Phase 6
+Inspections, incidents, compliance register (your own references only; no laws are built in), alerts, analytics. New: quality.js.
 
-## View modes and UI
-Top-bar screen icon: one tap switches mobile/desktop view (Settings → Layout: Auto, Mobile, Desktop). Desktop view has a collapsible sidebar. Quick-add (+) button, high-contrast, reduce-motion and larger-tap-target options. New: view.js, modern.css. Changed: prefs.js, i18n.js, guide.js, index.html, sw.js. Upload ALL files again.
+## Phase 7
+Encrypted server sync, conflict review (nothing is silently overwritten), verification, and optional file-inclusive backups. New: sync.js.
+Upload ALL app files again (changed: app.js, quality.js, docs.js, index.html, sw.js).
+The `server/` folder is a separate Node.js deployment (see server/README.md). Do not rely on GitHub Pages for it.
 
-## Compliance guide
-Compliance register now has a 📖 Compliance guide (#/compguide) and an 'Add the checklist' button (16 items in order). New: compguide.js. Changed: quality.js, modern.css, guide.js, i18n.js, view.js, app.js, index.html, sw.js. Upload ALL files again. Confirm every item with your permit office; the guide is orientation only.
+## UI refresh 2
+Navy project header with storeys, floor area, BOQ item count and budget; top tabs (Home, Modules, BOQ, Files); Modules screen with grouped colour tiles; outlined fields with the label on the border. Upload ALL files again (changed: app.js, ui.js, styles.css, index.html, sw.js, prices.js).
+
+## Structural elements (Phase 8)
+Columns, beams and slabs with a live calculator that uses only values you enter; bar schedule, Excel export, and "Send totals to BOQ". New: structure.js. Upload ALL site files again (changed: app.js, index.html, sw.js, styles.css). The server/ folder is NOT part of the site and is not uploaded to GitHub Pages.

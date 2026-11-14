@@ -12,9 +12,9 @@ const etb = n => n == null || n === '' ? 'Not set' : new Intl.NumberFormat('en-U
 const DEVICE = (() => { let d = localStorage.getItem('deviceId'); if (!d) { d = uid(); localStorage.setItem('deviceId', d); } return d; })();
 
 // ---------- reference data ----------
-const STORES = ['users', 'projects', 'members', 'tasks', 'audit', 'drawings', 'measurements', 'boqitems', 'boqrevs', 'files', 'materials', 'suppliers', 'quotes', 'labourrates', 'equiprates', 'rates', 'pricing', 'progress', 'progcfg', 'invtx', 'orders', 'workers', 'attendance', 'dailyreports', 'expenses', 'payments', 'contracts', 'variations', 'documents', 'finsettings', 'inspections', 'incidents', 'compitems'];
-const PRICE_STORES = ['materials', 'suppliers', 'quotes', 'labourrates', 'equiprates', 'rates', 'pricing', 'progress', 'progcfg', 'invtx', 'orders', 'workers', 'attendance', 'dailyreports', 'expenses', 'payments', 'contracts', 'variations', 'documents', 'finsettings', 'inspections', 'incidents', 'compitems']; // extension stores loaded generically
-const BACKUP_STORES = STORES.filter(s => s !== 'files'); // drawing files are not in backups yet
+const STORES = ['users', 'projects', 'members', 'tasks', 'audit', 'drawings', 'measurements', 'boqitems', 'boqrevs', 'files', 'materials', 'suppliers', 'quotes', 'labourrates', 'equiprates', 'rates', 'pricing', 'progress', 'progcfg', 'invtx', 'orders', 'workers', 'attendance', 'dailyreports', 'expenses', 'payments', 'contracts', 'variations', 'documents', 'finsettings', 'inspections', 'incidents', 'compitems', 'elements', 'structcfg', 'conflicts'];
+const PRICE_STORES = ['materials', 'suppliers', 'quotes', 'labourrates', 'equiprates', 'rates', 'pricing', 'progress', 'progcfg', 'invtx', 'orders', 'workers', 'attendance', 'dailyreports', 'expenses', 'payments', 'contracts', 'variations', 'documents', 'finsettings', 'inspections', 'incidents', 'compitems', 'elements', 'structcfg']; // extension stores loaded generically
+const BACKUP_STORES = STORES.filter(s => s !== 'files' && s !== 'conflicts'); // drawing files are not in backups yet
 const ROUTES = {}, DASH_EXT = {}; // extension points used by boq.js
 const CITIES = ['Shashamane', 'Addis Ababa', 'Hawassa', 'Adama', 'Bishoftu', 'Jimma', 'Bahir Dar', 'Dire Dawa', 'Other'];
 const TYPES = ['Single-storey house', 'Multi-storey residential', 'Villa', 'Apartments', 'Small commercial', 'Other'];
@@ -51,14 +51,14 @@ const SECTIONS = [
   { k: 'files', n: 'Files & Media', i: '📎', a: 'files', ph: 5, plan: ['Photos, receipts, drawings, contracts', 'Version history; no silent overwrite'] },
   { k: 'compliance', n: 'Ethiopian Building Compliance', i: '⚖️', a: 'compliance', ph: 6, plan: ['Regulation library with source and verification date', 'Checklist; unverified items flagged for professional review'] },
   { k: 'reports', n: 'Reports & Analytics', i: '📊', a: 'reports', ph: 5, plan: ['Daily, weekly, monthly reports', 'PDF, Excel, CSV export'] },
-  { k: 'backup', n: 'Backup & Synchronization', i: '☁️', a: 'admin', ph: 7, live: true, note: 'Local encrypted export and verified restore are live. Server sync arrives in Phase 7.' },
+  { k: 'backup', n: 'Backup & Synchronization', i: '☁️', a: 'admin', ph: 7, live: true, note: 'Local encrypted export and verified restore are live. Server sync is available below.' },
   { k: 'settings', n: 'Settings & Administration', i: '⚙️', a: null, ph: 1, live: true }
 ];
 
 // ---------- IndexedDB ----------
 let db;
 const openDB = () => new Promise((res, rej) => {
-  const r = indexedDB.open('ethiopian-construction', 6);
+  const r = indexedDB.open('ethiopian-construction', 8);
   r.onupgradeneeded = () => { for (const s of STORES) if (!r.result.objectStoreNames.contains(s)) r.result.createObjectStore(s, { keyPath: 'id' }); };
   r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
 });
@@ -80,6 +80,7 @@ async function save(store, rec, summary) {
   const r = { ...rec, id: rec.id || uid(), version: (old?.version || 0) + 1, createdAt: old?.createdAt || now, updatedAt: now, deviceId: DEVICE, sync: 'local' };
   await dbPut(store, r);
   await audit(old ? 'update' : 'create', store, r.id, summary, r.projectId || (store === 'projects' ? r.id : null));
+  if (typeof syncSoon === 'function') syncSoon();
   return r;
 }
 
@@ -100,7 +101,7 @@ async function aesKey(pass, salt) {
 }
 
 // ---------- state ----------
-const S = { user: null, users: [], projects: [], members: [], tasks: [], drawings: [], measurements: [], boqitems: [], boqrevs: [], materials: [], suppliers: [], quotes: [], labourrates: [], equiprates: [], rates: [], pricing: [], progress: [], progcfg: [], invtx: [], orders: [], workers: [], attendance: [], dailyreports: [], expenses: [], payments: [], contracts: [], variations: [], documents: [], finsettings: [], inspections: [], incidents: [], compitems: [], pid: localStorage.getItem('proj') };
+const S = { user: null, users: [], projects: [], members: [], tasks: [], drawings: [], measurements: [], boqitems: [], boqrevs: [], materials: [], suppliers: [], quotes: [], labourrates: [], equiprates: [], rates: [], pricing: [], progress: [], progcfg: [], invtx: [], orders: [], workers: [], attendance: [], dailyreports: [], expenses: [], payments: [], contracts: [], variations: [], documents: [], finsettings: [], inspections: [], incidents: [], compitems: [], elements: [], structcfg: [], pid: localStorage.getItem('proj') };
 const myRole = () => S.user && S.pid ? S.members.find(m => m.projectId === S.pid && m.userId === S.user.id)?.role : null;
 const curProject = () => S.projects.find(p => p.id === S.pid);
 const userName = id => S.users.find(u => u.id === id)?.name || '';
@@ -118,6 +119,7 @@ async function load() {
   if (!S.projects.find(p => p.id === S.pid)) S.pid = S.projects[0]?.id || null;
   if (S.pid) localStorage.setItem('proj', S.pid);
 }
+function syncBadge(pending) { return `<span class="badge ${navigator.onLine ? '' : 'off'}">${navigator.onLine ? '' : 'Offline · '}Saved locally${pending ? ' · ' + pending : ''}</span>`; }
 async function countLocal() {
   let n = 0; for (const s of ['users', 'projects', 'members', 'tasks', 'drawings', 'measurements', 'boqitems', 'boqrevs', ...PRICE_STORES]) n += (await dbAll(s)).filter(r => r.sync === 'local').length; return n;
 }
@@ -164,7 +166,7 @@ function authView(mode) {
   const create = mode === 'create';
   $('#app').hidden = true; $('#auth').hidden = false;
   $('#auth').innerHTML = `<div class="auth-box card"><h1>${create ? 'Create your account' : 'Sign in'}</h1>
-  <p class="muted small">Accounts are stored on this device only until server sync is added (Phase 7).</p>
+  <p class="muted small">Accounts are stored on this device. To use the same projects on another phone, join a synced workspace below.</p>
   <form data-f="${create ? 'signup' : 'login'}">
     ${create ? fld('Full name', 'name', '', { req: 1 }) : ''}
     ${fld('Email', 'email', '', { type: 'email', req: 1 })}
@@ -173,21 +175,45 @@ function authView(mode) {
     <button class="primary" style="width:100%">${create ? 'Create account' : 'Sign in'}</button>
   </form>
   <p class="small"><a href="#" data-a="${create ? 'to-login' : 'to-create'}"><u>${create ? 'I already have an account' : 'Create a new account'}</u></a></p>
+  <p class="small"><a href="#" data-a="sync-join"><u>Join a synced workspace (another phone’s project)</u></a></p>
   <label class="small">Restore from a backup file<input type="file" id="restore-auth" accept=".json,application/json"></label></div>`;
 }
 
 // ---------- shell ----------
+const IC24 = {
+  home: '<path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/>', modules: '<rect x="4" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.5"/>',
+  boq: '<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/>', files: '<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
+  drawings: '<path d="M4 20l1-4L16 5l3 3L8 19z"/><path d="M14 7l3 3"/>', cost: '<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8 7h8M8 11h.01M12 11h.01M16 11h.01M8 15h.01M12 15h.01M16 15h.01"/>',
+  suppliers: '<path d="M3 12V4h8l9 9-8 8z"/><circle cx="7.5" cy="8.5" r="1.2"/>', daily: '<rect x="3" y="5" width="18" height="16" rx="3"/><path d="M8 3v4M16 3v4M3 10h18"/>',
+  tasks: '<circle cx="12" cy="12" r="9"/><path d="M8 12.5l3 3 5-6"/>', progress: '<path d="M4 20V10M10 20V4M16 20v-8M21 20H3"/>',
+  inventory: '<path d="M3 8l9-5 9 5v8l-9 5-9-5z"/><path d="M3 8l9 5 9-5M12 13v8"/>', labour: '<circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><circle cx="17" cy="9" r="2.4"/><path d="M17 14c2.5 0 4 2 4 5"/>',
+  finance: '<rect x="3" y="6" width="18" height="14" rx="3"/><path d="M3 10h18M16 15h2"/>', reports: '<path d="M7 3h7l5 5v13H7z"/><path d="M14 3v5h5M10 13h6M10 17h6"/>',
+  analytics: '<path d="M4 19l5-6 4 3 7-9"/><path d="M15 7h5v5"/>', quality: '<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M8.5 12l2.5 2.5 4.5-5"/>',
+  compliance: '<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1M9 11l2 2 4-4M9 17h6"/>', alerts: '<path d="M6 16v-5a6 6 0 0 1 12 0v5l2 2H4z"/><path d="M10 21h4"/>',
+  projects: '<path d="M3 20h18"/><path d="M6 20V8l6-4 6 4v12"/><path d="M10 20v-5h4v5"/>', backup: '<path d="M7 18a4 4 0 0 1-.5-8A6 6 0 0 1 18 9.5 4 4 0 0 1 17 18z"/><path d="M12 11v5M9.5 13.5L12 11l2.5 2.5"/>',
+  settings: '<path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/>',
+  floors: '<path d="M12 3l9 5-9 5-9-5z"/><path d="M3 13l9 5 9-5"/>', area: '<path d="M4 20V4M4 20h16"/><path d="M4 14l6-6"/>', money: '<circle cx="12" cy="12" r="9"/><path d="M14.5 9.2c-.6-.8-1.5-1.2-2.6-1.2-1.5 0-2.5.8-2.5 1.9 0 2.7 5.2 1.3 5.2 4 0 1.2-1.1 2-2.7 2-1.2 0-2.2-.5-2.8-1.4M12 6.5v1.5M12 16v1.5"/>',
+  structure: '<path d="M6 5v14M12 5v14M18 5v14"/><path d="M3 5h18M3 19h18"/>', back: '<path d="M15 5l-7 7 7 7"/>'
+};
+const svg24 = k => `<svg viewBox="0 0 24 24" aria-hidden="true">${IC24[k] || ''}</svg>`;
+const compact = n => new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 1 }).format(n);
 async function renderShell() {
   const pending = await countLocal();
-  const r = myRole();
-  $('#top').innerHTML = `<span class="brand"><span class="logo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg></span>${S.projects.length ? '' : 'EthioBuild'}</span>
-    ${S.projects.length ? `<select id="projsel" aria-label="Current project">${S.projects.map(p => `<option value="${p.id}" ${p.id === S.pid ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}</select>` : ''}
-    <span class="badge ${navigator.onLine ? '' : 'off'}" title="Records are stored on this device. Nothing is backed up to a server yet.">${navigator.onLine ? '' : 'Offline · '}Saved locally${pending ? ' · ' + pending : ''}</span>`;
-  const h = location.hash;
-  const on = k => h === '#/' + k || (k === 'dashboard' && (h === '' || h === '#/')) ? 'on' : '';
-  const IC = { dashboard: '<path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/>', daily: '<rect x="3" y="5" width="18" height="16" rx="3"/><path d="M8 3v4M16 3v4M3 10h18"/>', projects: '<path d="M3 20h18"/><path d="M6 20V8l6-4 6 4v12"/><path d="M10 20v-5h4v5"/>', tasks: '<circle cx="12" cy="12" r="9"/><path d="M8 12.5l3 3 5-6"/>', menu: '<path d="M4 7h16M4 12h16M4 17h16"/>' };
-  $('#bottom').innerHTML = [['dashboard', 'Home'], ['daily', 'Today'], ['projects', 'Projects'], ['tasks', 'Tasks'], ['menu', 'Menu']]
-    .map(([k, l]) => `<a href="#/${k}" class="${on(k) || (k === 'menu' && /#\/(s\/|settings|backup|menu|drawings?|boq|suppliers|material|cost|rate|progress|progitem|inventory|labour|report|finance|files|doc|quality|inspection|compliance|compguide|alerts|analytics|guide)/.test(h) ? 'on' : '')}"><svg viewBox="0 0 24 24">${IC[k]}</svg>${l}</a>`).join('');
+  const r = myRole(); const p = curProject(); const h = location.hash || '#/dashboard';
+  const root = /^#\/(dashboard|menu)?\/?$/.test(h);
+  const stats = p && root ? (() => {
+    const bq = typeof pItems === 'function' ? pItems().length : 0; const money = can('finance') || r === 'owner';
+    const cell = (ic, l, v) => `<div class="st">${svg24(ic)}<div><span>${l}</span><b>${esc(v)}</b></div></div>`;
+    return `<div class="hd-stats">${cell('floors', 'Storeys', p.floors ?? '—')}${cell('area', 'Floor area', p.area ? p.area + ' m²' : '—')}${cell('boq', 'BOQ items', bq)}${cell('money', 'Budget', money ? (p.budget ? compact(p.budget) + ' ETB' : 'Not set') : 'Private')}</div>`;
+  })() : '';
+  $('#top').innerHTML = `<div class="hd-row">${root || !p ? `<span class="logo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg></span>` : `<button class="hd-back" data-a="back" aria-label="Back">${svg24('back')}</button>`}
+    ${S.projects.length ? `<select id="projsel" aria-label="Current project">${S.projects.map(q => `<option value="${q.id}" ${q.id === S.pid ? 'selected' : ''}>${esc(q.name)}</option>`).join('')}</select>` : '<span class="hd-title">EthioBuild</span>'}
+    ${syncBadge(pending)}</div>${stats}`;
+  const tabs = [['dashboard', 'Home', 'home', null], ['menu', 'Modules', 'modules', null], ['boq', 'BOQ', 'boq', 'boq'], ['files', 'Files', 'files', 'files']].filter(t => !t[3] || can(t[3]));
+  const cur = /^#\/(dashboard)?\/?$/.test(h) ? 'dashboard' : /^#\/(boq|boqitem)(\/|$)/.test(h) ? 'boq' : /^#\/(files|doc)(\/|$)/.test(h) ? 'files' : 'menu';
+  $('#tabs').hidden = !p;
+  $('#tabs').innerHTML = p ? tabs.map(([k, l, ic]) => `<a href="#/${k}" class="${cur === k ? 'on' : ''}">${svg24(ic)}${l}</a>`).join('') : '';
+  $('#bottom').innerHTML = '';
   return r;
 }
 
@@ -301,10 +327,20 @@ function viewProject(id) {
   <p class="muted small">Roles control access: for example, only owners, administrators, accountants and (view-only) managers and surveyors see finance.</p>`;
 }
 
+const MODS = [
+  ['Plan & estimate', '#c2691d', [['drawings', 'Drawings'], ['boq', 'BOQ'], ['structure', 'Structure'], ['cost', 'Cost'], ['suppliers', 'Prices']]],
+  ['Site operations', '#2563eb', [['daily', 'Daily'], ['tasks', 'Tasks'], ['progress', 'Progress'], ['inventory', 'Stock'], ['labour', 'Labour']]],
+  ['Money & records', '#0f9a68', [['finance', 'Finance'], ['files', 'Files'], ['reports', 'Reports'], ['analytics', 'Analytics']]],
+  ['Quality & compliance', '#d6336c', [['quality', 'Quality'], ['compliance', 'Compliance'], ['alerts', 'Alerts']]],
+  ['Project & admin', '#d97706', [['projects', 'Projects'], ['backup', 'Sync'], ['settings', 'Settings']]]
+];
 function viewMenu() {
   if (!curProject()) return emptyProject();
-  const items = SECTIONS.filter(s => s.a === null || can(s.a));
-  return `<h1>Menu</h1><div class="menu">${items.map(s => `<a href="#/${s.live ? s.k : 's/' + s.k}"><span>${s.i}</span>${esc(s.n)}<div class="tag">${s.live ? 'Available' : 'Phase ' + s.ph}</div></a>`).join('')}</div>`;
+  let al = 0; try { if (typeof alerts === 'function') al = alerts().filter(x => x.level !== 'low').length; } catch { }
+  return `<h1 class="sr">Modules</h1>${MODS.map(([g, c, ks]) => {
+    const tiles = ks.map(([k, l]) => ({ s: SECTIONS.find(x => x.k === k), k, l })).filter(t => t.s && (t.s.a === null || can(t.s.a)));
+    return tiles.length ? `<div class="grp" style="--gc:${c}">${esc(g)}</div><div class="tiles">${tiles.map(t => `<a class="tile" style="--tc:${c}" href="#/${t.s.live ? t.k : 's/' + t.k}" title="${esc(t.s.n)}"><span class="ico">${svg24(t.k)}${t.k === 'alerts' && al ? `<i class="dot">${al}</i>` : ''}</span>${esc(t.l)}</a>`).join('')}</div>` : '';
+  }).join('')}`;
 }
 
 function viewPlanned(k) {
@@ -318,8 +354,8 @@ async function viewSettings() {
   const theme = localStorage.getItem('theme') || 'auto';
   return `<h1>Settings</h1>
   <div class="card"><b>${esc(S.user.name)}</b><div class="muted small">${esc(S.user.email)}</div><div style="margin-top:8px"><button data-a="signout">Sign out</button></div></div>
-  ${typeof prefsCard === 'function' ? prefsCard() : `<div class="card"><label>Theme<select id="theme"><option value="auto" ${theme === 'auto' ? 'selected' : ''}>Match device</option><option value="light" ${theme === 'light' ? 'selected' : ''}>Light</option><option value="dark" ${theme === 'dark' ? 'selected' : ''}>Dark</option></select></label>
-  <label>Language<select disabled><option>English</option></select></label><div class="muted small">Amharic and Afaan Oromo are planned. Currency is ETB; units are metric.</div></div>`}
+  <div class="card"><label>Theme<select id="theme"><option value="auto" ${theme === 'auto' ? 'selected' : ''}>Match device</option><option value="light" ${theme === 'light' ? 'selected' : ''}>Light</option><option value="dark" ${theme === 'dark' ? 'selected' : ''}>Dark</option></select></label>
+  <label>Language<select disabled><option>English</option></select></label><div class="muted small">Amharic and Afaan Oromo are planned. Currency is ETB; units are metric.</div></div>
   <div class="card small"><b>This device</b><br>ID: ${esc(DEVICE.slice(0, 8))}…<br>Sign-in on this device is stored locally. Remote device revocation needs the Phase 7 server.</div>
   <div class="card"><b>Install app</b><p class="small muted">${window.matchMedia('(display-mode: standalone)').matches ? 'This app is already installed.' : 'Install it to open from your home screen and work offline.'}</p>${window.__installPrompt ? `<button class="primary" data-a="install">Install now</button>` : `<p class="small muted">If no button appears: in Chrome tap ⋮ then <b>Install app</b> or <b>Add to Home screen</b>. Open the site at its normal https address (not a file), reload once, then try again.</p>`}</div>
   <h2>Activity log</h2>${log.length ? log.map(a => `<div class="small card"><b>${esc(a.summary || a.action)}</b><div class="muted">${esc(a.at.slice(0, 16).replace('T', ' '))} UTC · ${esc(a.userName || '')} · ${esc(a.store)} ${esc(a.action)}</div></div>`).join('') : '<p class="muted small">No activity.</p>'}`;
@@ -330,8 +366,7 @@ async function viewBackup() {
   const counts = {}; for (const s of BACKUP_STORES) counts[s] = (await dbAll(s)).length;
   const last = JSON.parse(localStorage.getItem('lastBackup') || 'null'); const pending = await countLocal();
   return `<h1>Backup & Synchronization</h1>
-  <div class="card"><b>Sync state</b><p>Saved locally on this device: ${pending} record(s). Server synchronization is <b>not configured</b>, so no record is synchronized or backed up off this device yet.</p>
-  <p class="muted small">States that will be supported once a server exists: pending, synchronizing, synchronized, failed, conflict requires attention.</p></div>
+  ${typeof syncCard === 'function' ? await syncCard() : ''}
   <div class="card"><b>Export a backup file</b><p class="small muted">Records: ${Object.entries(counts).map(([k, v]) => k + ' ' + v).join(' · ')}. The file includes account password hashes, so set a passphrase to encrypt it (AES-GCM). <b>Uploaded drawing files are not included yet</b>; keep your original drawings.</p>
   <form data-f="export"><label class="chk"><input type="checkbox" name="files"> Include drawings, photos and documents (max 60 MB)</label><label>Passphrase (recommended)<input type="password" name="pass" autocomplete="new-password"></label><div class="err"></div><button class="primary">Create verified backup</button></form>
   ${last ? `<p class="small muted">Last export file: ${esc(last.at.slice(0, 16).replace('T', ' '))} UTC · ${last.encrypted ? 'encrypted' : 'NOT encrypted'} · checksum ${esc(last.checksum.slice(0, 12))}…<br>This confirms a file was created and verified. It does not confirm where you stored it.</p>` : '<p class="small muted">No export made yet.</p>'}</div>
@@ -470,6 +505,7 @@ async function startSession(u) { S.user = u; localStorage.setItem('session', u.i
 // ---------- actions ----------
 const A = {
   close: closeSheet,
+  back: () => { if (history.length > 1) history.back(); else location.hash = '#/menu'; },
   'to-create': () => authView('create'), 'to-login': () => authView('login'),
   'new-project': () => openSheet(projectForm()),
   'edit-project': id => openSheet(projectForm(S.projects.find(p => p.id === id))),
@@ -557,7 +593,7 @@ async function init() {
   db = await openDB();
   const sid = localStorage.getItem('session');
   if (sid) S.user = (await dbGet('users', sid)) || null;
-  if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then(r => r.update()).catch(() => { });
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => { });
   await render();
 }
 window.addEventListener('load', init); // after boq.js has registered its routes
