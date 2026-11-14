@@ -76,7 +76,7 @@ let compFilter = '';
 function viewCompliance() {
   const g = gate('compliance'); if (g) return g; const e = can('compliance', 'e'); const L = pComp().filter(c => !compFilter || c.status === compFilter).sort((a, b) => (a.title || '').localeCompare(b.title));
   const all = pComp(); const n = k => all.filter(c => c.status === k).length;
-  return `<div class="row"><h1>Compliance register</h1>${e ? `<button class="primary" data-a="new-comp">+ Add</button>` : ''}</div>
+  return `<div class="row"><h1>Compliance register</h1>${e ? `<button class="primary" data-a="new-req">+ Add</button>` : ''}</div>
   <div class="card small"><b>Read first.</b> This app contains no Ethiopian laws, standards or building codes and does not tell you what applies. Enter each requirement yourself from the official source (the permit office, the published regulation, your engineer), and record who confirmed it and when. Items without a typed reference and a confirmation are flagged <b class="err">Unverified</b> and need review by a licensed professional.</div>
   <div class="grid"><div class="kpi"><span class="muted small">Compliant</span><b>${n('compliant')}</b></div><div class="kpi"><span class="muted small">Not compliant</span><b>${n('non_compliant')}</b></div><div class="kpi"><span class="muted small">Unverified</span><b>${all.filter(compUnverified).length}</b></div></div>
   ${e && !all.length ? `<div class="card"><b>Start with topic names</b><p class="small muted">Adds blank topics to check. They are headings only, not requirements. Remove any that do not apply.</p><button class="sm" data-a="comp-topics">Add suggested topic names</button></div>` : ''}
@@ -85,7 +85,7 @@ function viewCompliance() {
   <div class="small muted">${c.authority ? 'Authority: ' + esc(c.authority) + '<br>' : ''}${c.reference ? 'Source / reference: ' + esc(c.reference) : '<span class="err">No source or reference typed.</span>'}${c.sourceUrl ? ` · <a href="${esc(c.sourceUrl)}" target="_blank" rel="noopener">link</a>` : ''}
   ${c.confirmedBy && c.confirmedOn ? `<br>Confirmed by ${esc(c.confirmedBy)} on ${esc(c.confirmedOn)}` : ''}${c.expires ? `<br>Valid until ${esc(c.expires)}${ex !== null && ex < 0 ? ' <b class="err">EXPIRED</b>' : ex !== null && ex <= 30 ? ' <b>(expires in ' + ex + ' days)</b>' : ''}` : ''}${c.note ? '<br>' + esc(c.note) : ''}</div>
   ${compUnverified(c) ? `<div class="small err">Unverified: confirm the source with a qualified professional.</div>` : ''}${docsFor('compliance', c.id).length ? `<div class="small muted">${docsFor('compliance', c.id).length} document(s) attached (see Files).</div>` : ''}
-  ${e ? `<div class="row" style="justify-content:flex-start;margin-top:6px"><button class="sm" data-a="edit-comp" data-id="${c.id}">Edit</button><button class="sm" data-a="del-comp" data-id="${c.id}">Remove</button></div>` : ''}</div>`; }).join('') || '<p class="muted">Nothing here.</p>'}`;
+  ${e ? `<div class="row" style="justify-content:flex-start;margin-top:6px"><button class="sm" data-a="edit-req" data-id="${c.id}">Edit</button><button class="sm" data-a="del-req" data-id="${c.id}">Remove</button></div>` : ''}</div>`; }).join('') || '<p class="muted">Nothing here.</p>'}`;
 }
 const regForm = c => `<h1>${c ? 'Edit requirement' : 'Add requirement'}</h1><form data-f="compitem"><input type="hidden" name="id" value="${c?.id || ''}">${fld('Topic / requirement', 'title', c?.title, { req: 1 })}${fld('Authority (who requires or issues it)', 'authority', c?.authority)}
   <label>Source or reference, typed from the official document (name, number, article, date)<textarea name="reference" rows="2">${esc(c?.reference || '')}</textarea></label>${fld('Link to source (optional)', 'sourceUrl', c?.sourceUrl, { type: 'url' })}${sel('Status', 'status', Object.entries(COMP_ST), c?.status || 'not_checked')}
@@ -100,8 +100,8 @@ F.compitem = async (d, form) => {
   for (const f of new FormData(form).getAll('receipts').filter(f => f && f.size)) await saveDoc(f, { category: 'Permits', linkType: 'compliance', linkId: rec.id, name: trim(d.title) });
 };
 Object.assign(A, {
-  'new-comp': () => openSheet(regForm()), 'edit-comp': id => openSheet(regForm(S.compitems.find(x => x.id === id))),
-  async 'del-comp'(id) { if (!can('compliance', 'e')) throw new Error('No access.'); const c = S.compitems.find(x => x.id === id); if (!confirm(`Remove “${c.title}”? Recorded in the activity log.`)) return; await save('compitems', { ...c, deleted: true }, `Removed compliance item ${c.title}`); await render(); },
+  'new-req': () => openSheet(regForm()), 'edit-req': id => openSheet(regForm(S.compitems.find(x => x.id === id))),
+  async 'del-req'(id) { if (!can('compliance', 'e')) throw new Error('No access.'); const c = S.compitems.find(x => x.id === id); if (!confirm(`Remove “${c.title}”? Recorded in the activity log.`)) return; await save('compitems', { ...c, deleted: true }, `Removed compliance item ${c.title}`); await render(); },
   async 'comp-topics'() { if (!can('compliance', 'e')) throw new Error('No access.'); for (const t of COMP_TOPICS) await save('compitems', { projectId: S.pid, title: t, authority: '', reference: '', sourceUrl: '', status: 'not_checked', confirmedBy: '', confirmedOn: '', expires: '', note: 'Topic name only. Enter the real requirement and its source.' }, `Added topic ${t}`); await render(); }
 });
 document.addEventListener('change', async e => { if (e.target.id === 'compf') { compFilter = e.target.value; await render(); } });

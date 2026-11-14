@@ -597,7 +597,7 @@ Object.assign(A, {
   'card-move'(id) { viewDashboard(); const d = Number(window.__lastEl.dataset.d); const u = uiPref(); const a = homeKeys(HOME_DEFAULT); const i = a.indexOf(id), j = i + d; if (j < 0 || j >= a.length) return; [a[i], a[j]] = [a[j], a[i]]; u.cards = a; uiSave(u); render(); }
 });
 ROUTES.customize = viewCustomize;
-const APP_BUILD = 'phase 8c';
+const APP_BUILD = 'phase 8d';
 SECTIONS.splice(SECTIONS.findIndex(x => x.k === 'settings'), 0, { k: 'customize', n: 'Customize', i: '🎛️', a: null, ph: 8, live: true });
 
 function applyTheme() { const t = localStorage.getItem('theme') || 'auto'; if (t === 'auto') document.documentElement.removeAttribute('data-theme'); else document.documentElement.dataset.theme = t; }
