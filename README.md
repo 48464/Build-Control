@@ -42,3 +42,6 @@ Navy project header with storeys, floor area, BOQ item count and budget; top tab
 
 ## Structural elements (Phase 8)
 Columns, beams and slabs with a live calculator that uses only values you enter; bar schedule, Excel export, and "Send totals to BOQ". New: structure.js. Upload ALL site files again (changed: app.js, index.html, sw.js, styles.css). The server/ folder is NOT part of the site and is not uploaded to GitHub Pages.
+
+## Customize (per device)
+Home > Customize (or Settings > Appearance): overall size, spacing, tiles per row, header numbers on/off, and which cards appear on Home and in what order. Upload ALL site files again (changed: app.js, styles.css).

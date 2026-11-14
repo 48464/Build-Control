@@ -201,7 +201,7 @@ async function renderShell() {
   const pending = await countLocal();
   const r = myRole(); const p = curProject(); const h = location.hash || '#/dashboard';
   const root = /^#\/(dashboard|menu)?\/?$/.test(h);
-  const stats = p && root ? (() => {
+  const stats = p && root && uiPref().stats ? (() => {
     const bq = typeof pItems === 'function' ? pItems().length : 0; const money = can('finance') || r === 'owner';
     const cell = (ic, l, v) => `<div class="st">${svg24(ic)}<div><span>${l}</span><b>${esc(v)}</b></div></div>`;
     return `<div class="hd-stats">${cell('floors', 'Storeys', p.floors ?? '—')}${cell('area', 'Floor area', p.area ? p.area + ' m²' : '—')}${cell('boq', 'BOQ items', bq)}${cell('money', 'Budget', money ? (p.budget ? compact(p.budget) + ' ETB' : 'Not set') : 'Private')}</div>`;
@@ -281,7 +281,8 @@ function viewDashboard() {
   };
   Object.assign(C, DASH_EXT);
   const keys = (LAYOUT[r] || LAYOUT.viewer).filter(k => k !== 'kpi' || can('finance') || r === 'owner'); if (C.alerts && !keys.includes('alerts')) keys.unshift('alerts');
-  return `<h1>${esc(p.name)}</h1><p class="muted small">${esc(cityOf(p))} · ${ROLE_LABEL[r]} view</p>${keys.map(k => C[k]()).join('')}`;
+  const shown = homeKeys(keys);
+  return `<div class="row"><h1>${esc(p.name)}</h1><a class="btn sm noprint" href="#/customize">Customize</a></div><p class="muted small">${esc(cityOf(p))} · ${ROLE_LABEL[r]} view</p>${shown.map(k => C[k] ? C[k]() : '').join('')}`;
 }
 
 function viewDaily() {
@@ -357,6 +358,7 @@ async function viewSettings() {
   <div class="card"><label>Theme<select id="theme"><option value="auto" ${theme === 'auto' ? 'selected' : ''}>Match device</option><option value="light" ${theme === 'light' ? 'selected' : ''}>Light</option><option value="dark" ${theme === 'dark' ? 'selected' : ''}>Dark</option></select></label>
   <label>Language<select disabled><option>English</option></select></label><div class="muted small">Amharic and Afaan Oromo are planned. Currency is ETB; units are metric.</div></div>
   <div class="card small"><b>This device</b><br>ID: ${esc(DEVICE.slice(0, 8))}…<br>Sign-in on this device is stored locally. Remote device revocation needs the Phase 7 server.</div>
+  <div class="card"><b>Appearance</b><p class="small muted">Size, spacing, tiles per row and which cards appear on Home.</p><a class="btn" href="#/customize">Customize this device</a></div>
   <div class="card"><b>Install app</b><p class="small muted">${window.matchMedia('(display-mode: standalone)').matches ? 'This app is already installed.' : 'Install it to open from your home screen and work offline.'}</p>${window.__installPrompt ? `<button class="primary" data-a="install">Install now</button>` : `<p class="small muted">If no button appears: in Chrome tap ⋮ then <b>Install app</b> or <b>Add to Home screen</b>. Open the site at its normal https address (not a file), reload once, then try again.</p>`}</div>
   <h2>Activity log</h2>${log.length ? log.map(a => `<div class="small card"><b>${esc(a.summary || a.action)}</b><div class="muted">${esc(a.at.slice(0, 16).replace('T', ' '))} UTC · ${esc(a.userName || '')} · ${esc(a.store)} ${esc(a.action)}</div></div>`).join('') : '<p class="muted small">No activity.</p>'}`;
 }
@@ -561,6 +563,41 @@ window.addEventListener('hashchange', () => S.user && render());
 window.addEventListener('online', () => S.user && renderShell());
 window.addEventListener('offline', () => S.user && renderShell());
 
+
+// ---------- appearance (per device) ----------
+const UIDEF = { size: 100, density: 'normal', tiles: 4, stats: true, cards: null };
+const uiPref = () => { try { return { ...UIDEF, ...JSON.parse(localStorage.getItem('ui') || '{}') }; } catch { return { ...UIDEF }; } };
+const uiSave = o => { try { localStorage.setItem('ui', JSON.stringify(o)); } catch { } applyUi(); };
+function applyUi() {
+  const u = uiPref(); const r = document.documentElement;
+  r.style.zoom = u.size === 100 ? '' : String(u.size / 100); r.style.setProperty('--cols', u.tiles);
+  document.body.classList.toggle('compact', u.density === 'compact');
+}
+const CARD_LABEL = { kpi: 'Budget and progress numbers', next: 'Next most important action', today: 'Due today', overdue: 'Overdue', blocked: 'Delaying the project', approvals: 'Needs approval', materials: 'Materials needed', money: 'Money spent', drawings: 'Drawings', compliance: 'Compliance', labour: 'Labour today', boq: 'BOQ summary', cost: 'Cost estimate', alerts: 'Alerts', structure: 'Structural elements' };
+let HOME_DEFAULT = [];
+function homeKeys(def) { HOME_DEFAULT = def; const u = uiPref(); const keys = u.cards ? u.cards.filter(k => CARD_LABEL[k]) : def; return keys.filter(k => k !== 'kpi' || can('finance') || myRole() === 'owner'); }
+function viewCustomize() {
+  if (!curProject()) return emptyProject(); const u = uiPref(); viewDashboard(); const shown = homeKeys(HOME_DEFAULT); const hidden = Object.keys(CARD_LABEL).filter(k => !shown.includes(k) && (k !== 'kpi' || can('finance') || myRole() === 'owner'));
+  const seg = (k, opts) => `<div class="seg">${opts.map(([v, l]) => `<button class="${String(u[k]) === String(v) ? 'on' : ''}" data-a="ui-set" data-k="${k}" data-v="${v}">${l}</button>`).join('')}</div>`;
+  return `<a href="#/dashboard" class="small muted">← Home</a><h1>Customize</h1><p class="small muted">These choices are saved on this device only.</p>
+  <div class="card"><b>Overall size</b><div class="small muted">Makes everything smaller or larger.</div>${seg('size', [[85, 'Small'], [92, 'Medium'], [100, 'Normal'], [110, 'Large']])}</div>
+  <div class="card"><b>Spacing</b>${seg('density', [['normal', 'Comfortable'], ['compact', 'Compact']])}</div>
+  <div class="card"><b>Module tiles per row</b>${seg('tiles', [[3, '3'], [4, '4'], [5, '5'], [6, '6']])}</div>
+  <div class="card"><b>Project numbers in the header</b>${seg('stats', [[true, 'Show'], [false, 'Hide']])}</div>
+  <h2>Cards on the home page</h2>
+  ${shown.map((k, i) => `<div class="card row"><b class="small">${esc(CARD_LABEL[k])}</b><span><button class="sm" data-a="card-move" data-id="${k}" data-d="-1" ${i === 0 ? 'disabled' : ''} aria-label="Move up">↑</button> <button class="sm" data-a="card-move" data-id="${k}" data-d="1" ${i === shown.length - 1 ? 'disabled' : ''} aria-label="Move down">↓</button> <button class="sm danger" data-a="card-hide" data-id="${k}">Hide</button></span></div>`).join('') || '<p class="muted small">No cards shown.</p>'}
+  ${hidden.length ? `<h2>Hidden cards</h2>${hidden.map(k => `<div class="card row"><span class="small">${esc(CARD_LABEL[k])}</span><button class="sm" data-a="card-show" data-id="${k}">Show</button></div>`).join('')}` : ''}
+  <div class="row" style="justify-content:flex-start"><button data-a="ui-reset">Reset to default</button><a class="btn" href="#/dashboard">Done</a></div>`;
+}
+Object.assign(A, {
+  'ui-set'() { const el = window.__lastEl; const u = uiPref(); const v = el.dataset.v; u[el.dataset.k] = v === 'true' ? true : v === 'false' ? false : isNaN(Number(v)) ? v : Number(v); uiSave(u); render(); },
+  'ui-reset'() { try { localStorage.removeItem('ui'); } catch { } applyUi(); render(); },
+  'card-hide'(id) { viewDashboard(); const u = uiPref(); u.cards = homeKeys(HOME_DEFAULT).filter(k => k !== id); uiSave(u); render(); },
+  'card-show'(id) { viewDashboard(); const u = uiPref(); u.cards = [...homeKeys(HOME_DEFAULT), id]; uiSave(u); render(); },
+  'card-move'(id) { viewDashboard(); const d = Number(window.__lastEl.dataset.d); const u = uiPref(); const a = homeKeys(HOME_DEFAULT); const i = a.indexOf(id), j = i + d; if (j < 0 || j >= a.length) return; [a[i], a[j]] = [a[j], a[i]]; u.cards = a; uiSave(u); render(); }
+});
+ROUTES.customize = viewCustomize;
+
 function applyTheme() { const t = localStorage.getItem('theme') || 'auto'; if (t === 'auto') document.documentElement.removeAttribute('data-theme'); else document.documentElement.dataset.theme = t; }
 
 // ---------- render ----------
@@ -588,7 +625,7 @@ async function render() {
 }
 
 async function init() {
-  applyTheme();
+  applyTheme(); applyUi();
   if (!crypto?.subtle) { document.body.innerHTML = '<p style="padding:20px">This app needs a secure context (HTTPS or localhost) for encryption features.</p>'; return; }
   db = await openDB();
   const sid = localStorage.getItem('session');
