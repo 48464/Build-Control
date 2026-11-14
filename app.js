@@ -193,7 +193,7 @@ const IC24 = {
   projects: '<path d="M3 20h18"/><path d="M6 20V8l6-4 6 4v12"/><path d="M10 20v-5h4v5"/>', backup: '<path d="M7 18a4 4 0 0 1-.5-8A6 6 0 0 1 18 9.5 4 4 0 0 1 17 18z"/><path d="M12 11v5M9.5 13.5L12 11l2.5 2.5"/>',
   settings: '<path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/>',
   floors: '<path d="M12 3l9 5-9 5-9-5z"/><path d="M3 13l9 5 9-5"/>', area: '<path d="M4 20V4M4 20h16"/><path d="M4 14l6-6"/>', money: '<circle cx="12" cy="12" r="9"/><path d="M14.5 9.2c-.6-.8-1.5-1.2-2.6-1.2-1.5 0-2.5.8-2.5 1.9 0 2.7 5.2 1.3 5.2 4 0 1.2-1.1 2-2.7 2-1.2 0-2.2-.5-2.8-1.4M12 6.5v1.5M12 16v1.5"/>',
-  structure: '<path d="M6 5v14M12 5v14M18 5v14"/><path d="M3 5h18M3 19h18"/>', back: '<path d="M15 5l-7 7 7 7"/>'
+  customize: '<path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/>', structure: '<path d="M6 5v14M12 5v14M18 5v14"/><path d="M3 5h18M3 19h18"/>', back: '<path d="M15 5l-7 7 7 7"/>'
 };
 const svg24 = k => `<svg viewBox="0 0 24 24" aria-hidden="true">${IC24[k] || ''}</svg>`;
 const compact = n => new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 1 }).format(n);
@@ -333,7 +333,7 @@ const MODS = [
   ['Site operations', '#2563eb', [['daily', 'Daily'], ['tasks', 'Tasks'], ['progress', 'Progress'], ['inventory', 'Stock'], ['labour', 'Labour']]],
   ['Money & records', '#0f9a68', [['finance', 'Finance'], ['files', 'Files'], ['reports', 'Reports'], ['analytics', 'Analytics']]],
   ['Quality & compliance', '#d6336c', [['quality', 'Quality'], ['compliance', 'Compliance'], ['alerts', 'Alerts']]],
-  ['Project & admin', '#d97706', [['projects', 'Projects'], ['backup', 'Sync'], ['settings', 'Settings']]]
+  ['Project & admin', '#d97706', [['projects', 'Projects'], ['customize', 'Customize'], ['backup', 'Sync'], ['settings', 'Settings']]]
 ];
 function viewMenu() {
   if (!curProject()) return emptyProject();
@@ -358,7 +358,7 @@ async function viewSettings() {
   <div class="card"><label>Theme<select id="theme"><option value="auto" ${theme === 'auto' ? 'selected' : ''}>Match device</option><option value="light" ${theme === 'light' ? 'selected' : ''}>Light</option><option value="dark" ${theme === 'dark' ? 'selected' : ''}>Dark</option></select></label>
   <label>Language<select disabled><option>English</option></select></label><div class="muted small">Amharic and Afaan Oromo are planned. Currency is ETB; units are metric.</div></div>
   <div class="card small"><b>This device</b><br>ID: ${esc(DEVICE.slice(0, 8))}…<br>Sign-in on this device is stored locally. Remote device revocation needs the Phase 7 server.</div>
-  <div class="card"><b>Appearance</b><p class="small muted">Size, spacing, tiles per row and which cards appear on Home.</p><a class="btn" href="#/customize">Customize this device</a></div>
+  <div class="card"><b>Appearance</b><p class="small muted">Size, spacing, tiles per row and which cards appear on Home. App version: ${APP_BUILD}.</p><a class="btn" href="#/customize">Customize this device</a></div>
   <div class="card"><b>Install app</b><p class="small muted">${window.matchMedia('(display-mode: standalone)').matches ? 'This app is already installed.' : 'Install it to open from your home screen and work offline.'}</p>${window.__installPrompt ? `<button class="primary" data-a="install">Install now</button>` : `<p class="small muted">If no button appears: in Chrome tap ⋮ then <b>Install app</b> or <b>Add to Home screen</b>. Open the site at its normal https address (not a file), reload once, then try again.</p>`}</div>
   <h2>Activity log</h2>${log.length ? log.map(a => `<div class="small card"><b>${esc(a.summary || a.action)}</b><div class="muted">${esc(a.at.slice(0, 16).replace('T', ' '))} UTC · ${esc(a.userName || '')} · ${esc(a.store)} ${esc(a.action)}</div></div>`).join('') : '<p class="muted small">No activity.</p>'}`;
 }
@@ -597,6 +597,8 @@ Object.assign(A, {
   'card-move'(id) { viewDashboard(); const d = Number(window.__lastEl.dataset.d); const u = uiPref(); const a = homeKeys(HOME_DEFAULT); const i = a.indexOf(id), j = i + d; if (j < 0 || j >= a.length) return; [a[i], a[j]] = [a[j], a[i]]; u.cards = a; uiSave(u); render(); }
 });
 ROUTES.customize = viewCustomize;
+const APP_BUILD = 'phase 8c';
+SECTIONS.splice(SECTIONS.findIndex(x => x.k === 'settings'), 0, { k: 'customize', n: 'Customize', i: '🎛️', a: null, ph: 8, live: true });
 
 function applyTheme() { const t = localStorage.getItem('theme') || 'auto'; if (t === 'auto') document.documentElement.removeAttribute('data-theme'); else document.documentElement.dataset.theme = t; }
 
